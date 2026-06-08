@@ -22,6 +22,10 @@ type User = {
   provider: "password" | "github";
 };
 
+type AuthConfig = {
+  github_enabled: boolean;
+};
+
 const tokenKey = "humen-mcp-token";
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -151,6 +155,14 @@ function Login({ onToken }: { onToken: (token: string) => void }) {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [error, setError] = useState("");
+  const [authConfig, setAuthConfig] = useState<AuthConfig>({ github_enabled: false });
+
+  useEffect(() => {
+    fetch(apiPath("/api/auth/config"))
+      .then((response) => response.json())
+      .then((config) => setAuthConfig(config))
+      .catch(() => setAuthConfig({ github_enabled: false }));
+  }, []);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -161,7 +173,7 @@ function Login({ onToken }: { onToken: (token: string) => void }) {
       body: JSON.stringify({ email, pass })
     });
     if (!response.ok) {
-      setError("Login failed");
+      setError("Admin login failed");
       return;
     }
     const data = await response.json();
@@ -188,11 +200,13 @@ function Login({ onToken }: { onToken: (token: string) => void }) {
         </label>
         {error && <p className="error">{error}</p>}
         <button className="primary" type="submit">
-          <Check size={18} /> Sign in
+          <Check size={18} /> Admin sign in
         </button>
-        <a className="oauth" href={apiPath("/api/auth/oauth/github/start")}>
-          <Github size={18} /> GitHub
-        </a>
+        {authConfig.github_enabled && (
+          <a className="oauth" href={apiPath("/api/auth/oauth/github/start")}>
+            <Github size={18} /> GitHub
+          </a>
+        )}
       </form>
     </main>
   );
