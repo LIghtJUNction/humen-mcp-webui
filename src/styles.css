@@ -199,6 +199,19 @@ h3 {
   background: color-mix(in srgb, var(--danger) 10%, var(--surface));
 }
 
+.requestItem.sent {
+  border-color: var(--primary);
+}
+
+.requestItem.taskStatus-in_progress {
+  border-color: var(--primary);
+}
+
+.requestItem.taskStatus-done,
+.requestItem.taskStatus-archived {
+  opacity: 0.72;
+}
+
 .requestItem span {
   display: grid;
   gap: 4px;
@@ -240,6 +253,40 @@ h3 {
   min-height: 36px;
   padding: 0 11px;
   font-weight: 700;
+}
+
+.topbarLead,
+.loginHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.loginHead {
+  justify-content: space-between;
+}
+
+.sourceLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  background: var(--primary);
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sourceLink:hover {
+  border-color: var(--primary-strong);
+  background: var(--primary-strong);
 }
 
 .langButton {
@@ -422,6 +469,38 @@ h3 {
   background: var(--primary-soft);
 }
 
+.judgmentChoices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(140px, 220px));
+  gap: 12px;
+}
+
+.judgmentButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 54px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.judgmentButton.yes.chosen {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+.judgmentButton.no.chosen {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+  color: var(--danger);
+}
+
 textarea,
 input {
   width: 100%;
@@ -477,6 +556,10 @@ input {
 
 .secondary {
   color: var(--text);
+}
+
+.hidden {
+  display: none !important;
 }
 
 .oauth {
@@ -594,6 +677,111 @@ input {
 .tagCloud button {
   min-height: 42px;
   padding: 0 14px;
+}
+
+.taskFilters {
+  width: fit-content;
+}
+
+.taskGrid {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.taskCard {
+  align-content: start;
+}
+
+.taskCard .cardHead {
+  align-items: flex-start;
+}
+
+.taskCard .cardHead strong {
+  flex: 1;
+  min-width: 0;
+}
+
+.compactSteps {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 22px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.compactNote {
+  min-height: 70px;
+  max-width: none;
+}
+
+.introAddRow {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.introAddRow label,
+.introCodeLine {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.relationPanel {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.relationStrip {
+  display: grid;
+  gap: 8px;
+}
+
+.relationStrip > div {
+  display: grid;
+  gap: 8px;
+}
+
+.relationItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.relationItem span,
+.introCodeLine code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.introCodeLine {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  margin-top: 8px;
+}
+
+.introCodeLine code {
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.userCardActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .secondary.small {
@@ -824,6 +1012,71 @@ input {
   max-width: none;
 }
 
+.passkeyPanel {
+  gap: 14px;
+}
+
+.passkeyAddRow {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.passkeyAddRow label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.passkeyList {
+  display: grid;
+  gap: 8px;
+}
+
+.passkeyItem {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.passkeyItem small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+.compactEmpty {
+  min-height: 64px;
+}
+
+.onboardingBox {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--border));
+  border-radius: 8px;
+  background: var(--primary-soft);
+}
+
+.onboardingBox p,
+.profileToggle small,
+.riskToggle span {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.profileToggle > span {
+  display: grid;
+  gap: 4px;
+}
+
 .agentSecretRow {
   display: grid;
   grid-template-columns: 1fr auto auto;
@@ -1020,6 +1273,16 @@ pre {
     grid-template-rows: auto minmax(420px, 1fr);
   }
 
+  .topbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .topbarLead {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .page,
   .task {
     padding: 18px;
@@ -1027,6 +1290,8 @@ pre {
 
   .adminForm,
   .agentSecretRow,
+  .introAddRow,
+  .relationItem,
   .oauthAddRow,
   .oauthActions,
   .oauthCardGrid,
@@ -1090,6 +1355,112 @@ select {
   grid-template-columns: minmax(150px, 0.7fr) minmax(190px, 0.9fr) minmax(240px, 1.4fr) minmax(180px, 0.9fr);
 }
 
+.webhookHelpField {
+  display: grid;
+  gap: 7px;
+}
+
+.webhookHelpField small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.webhookHelpField textarea {
+  min-height: 126px;
+  max-width: none;
+}
+
+.webhookActions {
+  grid-template-columns: 1fr repeat(5, auto);
+}
+
+.weixinLoginBox {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.weixinLoginHead,
+.weixinLoginHead > div,
+.weixinLoginBody {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.weixinLoginHead {
+  justify-content: space-between;
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.taskStatus-in_progress {
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+  color: var(--primary-strong);
+}
+
+.taskStatus-done {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+.taskStatus-archived {
+  opacity: 0.72;
+}
+
+.weixinQr {
+  width: 132px;
+  height: 132px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+  object-fit: contain;
+}
+
+.weixinQr.placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: var(--surface);
+}
+
+.weixinLoginMeta {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.weixinLoginMeta p {
+  color: var(--text);
+}
+
+.weixinLoginMeta code {
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.weixinLoginMeta small {
+  color: var(--muted);
+}
+
 .copyLine {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -1098,4 +1469,20 @@ select {
 
 .copyField small {
   color: var(--muted);
+}
+
+@media (max-width: 860px) {
+  .webhookActions {
+    grid-template-columns: 1fr;
+  }
+
+  .weixinLoginBody {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .passkeyAddRow,
+  .passkeyItem {
+    grid-template-columns: 1fr;
+  }
 }

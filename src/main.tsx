@@ -6,12 +6,14 @@ import {
   Clock3,
   Github,
   Inbox,
+  KeyRound,
   Languages,
   ListChecks,
   LogOut,
   MessageSquareText,
   Moon,
   Plus,
+  QrCode,
   RefreshCw,
   Search,
   Send,
@@ -23,12 +25,13 @@ import {
   UserCircle,
   UserPlus,
   Users,
-  Webhook
+  Webhook,
+  X
 } from "lucide-react";
 import "./styles.css";
 
-type TaskKind = "choice" | "text" | "image_review" | "steps";
-type View = "inbox" | "trash" | "directory" | "tags" | "agent" | "webhooks" | "settings";
+type TaskKind = "choice" | "judgment" | "text" | "image_review" | "steps";
+type View = "inbox" | "tasks" | "sent" | "trash" | "directory" | "tags" | "agent" | "webhooks" | "settings";
 
 type HumanRequest = {
   id: string;
@@ -44,6 +47,7 @@ type HumanRequest = {
   timeout_seconds: number;
   expires_at: number;
   tags: string[];
+  assigned_to?: string | null;
 };
 
 type ExpiredRequest = {
@@ -52,19 +56,63 @@ type ExpiredRequest = {
   reason: string;
 };
 
+type HumanAnswer = {
+  answer: string;
+  note?: string | null;
+  answered_by: string;
+  answered_at: number;
+};
+
+type AnsweredRequest = {
+  request: HumanRequest;
+  answer: HumanAnswer;
+  answered_late: boolean;
+};
+
+type AgentTaskStatus = "open" | "in_progress" | "done" | "archived";
+
+type AgentTask = {
+  id: string;
+  title: string;
+  description: string;
+  steps: string[];
+  tags: string[];
+  created_by: string;
+  assigned_to: string;
+  created_at: number;
+  updated_at: number;
+  due_at?: number | null;
+  status: AgentTaskStatus;
+  human_note?: string | null;
+  completed_at?: number | null;
+};
+
 type User = {
   email: string;
-  provider: "password" | "github";
+  provider: "password" | "github" | "passkey";
 };
 
 type UserProfile = {
   email: string;
-  provider: "password" | "github";
+  provider: "password" | "github" | "passkey";
   profile: string;
   tags: string[];
+  friend_code?: string;
+  intro_code: string;
+  is_public: boolean;
+  is_friend: boolean;
+  friend_request_sent: boolean;
+  friend_request_received: boolean;
+  onboarding_completed: boolean;
   online: boolean;
   last_login_at: number;
   ban_expires_at?: number | null;
+};
+
+type FriendBundle = {
+  friends: UserProfile[];
+  incoming: UserProfile[];
+  outgoing: UserProfile[];
 };
 
 type TagStat = {
@@ -79,10 +127,49 @@ type OAuthChannelConfig = {
   client_secret?: string;
 };
 
+type PublicKeyCredentialDescriptorJSON = Omit<PublicKeyCredentialDescriptor, "id"> & {
+  id: string;
+};
+
+type PublicKeyCredentialCreationOptionsJSON = Omit<
+  PublicKeyCredentialCreationOptions,
+  "challenge" | "user" | "excludeCredentials"
+> & {
+  challenge: string;
+  user: Omit<PublicKeyCredentialUserEntity, "id"> & { id: string };
+  excludeCredentials?: PublicKeyCredentialDescriptorJSON[];
+};
+
+type PublicKeyCredentialRequestOptionsJSON = Omit<
+  PublicKeyCredentialRequestOptions,
+  "challenge" | "allowCredentials"
+> & {
+  challenge: string;
+  allowCredentials?: PublicKeyCredentialDescriptorJSON[];
+};
+
 type AuthConfig = {
   github_enabled: boolean;
+  passkey_enabled?: boolean;
   allow_registration?: boolean;
   oauth_channels?: OAuthChannelConfig[];
+};
+
+type PasskeyInfo = {
+  id: string;
+  name: string;
+  created_at: number;
+  last_used_at?: number | null;
+};
+
+type PasskeyRegistrationStart = {
+  registration_id: string;
+  options: PublicKeyCredentialCreationOptionsJSON;
+};
+
+type PasskeyAuthenticationStart = {
+  authentication_id: string;
+  options: PublicKeyCredentialRequestOptionsJSON;
 };
 
 type WebhookConfig = {
@@ -91,13 +178,28 @@ type WebhookConfig = {
   url: string;
   enabled: boolean;
   secret?: string | null;
-  kind: "generic" | "wechat_clawbot" | string;
+  kind: "generic" | "wechat" | string;
+  help_prompt?: string;
+  weixin_qrcode?: string | null;
+  weixin_qrcode_url?: string | null;
+  weixin_status?: string | null;
+  weixin_status_message?: string | null;
+  weixin_bot_token?: string | null;
+  weixin_account_id?: string | null;
+  weixin_base_url?: string | null;
+  weixin_user_id?: string | null;
+  weixin_get_updates_buf?: string | null;
+  weixin_last_error?: string | null;
+  weixin_last_seen_at?: number | null;
+  weixin_long_poll_timeout_ms?: number | null;
+  weixin_api_timeout_ms?: number | null;
 };
 
 type AdminSettings = {
   allow_registration: boolean;
   oauth_channels: OAuthChannelConfig[];
-  agent_secret?: string | null;
+  agent_secret_prefix?: string | null;
+  allow_agent_directory: boolean;
   webhooks?: WebhookConfig[];
 };
 
@@ -105,12 +207,26 @@ type AgentAccess = {
   user: string;
   mcp_url: string;
   secret_required: boolean;
+  agent_secret_prefix: string;
+  user_agent_secret: string;
   agent_secret: string;
+  allow_agent_directory: boolean;
+  friend_code?: string;
+  intro_code: string;
+  is_public: boolean;
+  onboarding_completed: boolean;
 };
 
 const tokenKey = "humen-mcp-token";
 const preferencesKey = "humen-mcp-preferences";
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+const sourceUrl = "https://github.com/LIghtJUNction/humen-mcp";
+const reservedTags = new Set(["#admin"]);
+const defaultWebhookHelpPrompt = `直接回复本消息就是回答。
+如果问题积压，请引用对应问题回复，系统会优先匹配引用中的 请求ID 或 [humen:短ID]。
+网页处理地址：{url}
+请求ID：{request_id}
+短ID：{short_id}`;
 
 type Theme = "light" | "dark";
 type Language = "zh" | "en";
@@ -167,13 +283,18 @@ const zhText: Record<string, string> = {
   online: "在线",
   refresh: "刷新",
   inbox: "收件箱",
+  tasks: "任务",
+  sent: "成功发送",
   trash: "回收站",
   directory: "用户目录",
   tags: "标签",
   agent: "接入 Agent",
   adminSettings: "管理与设置",
   settings: "设置",
+  sourceCode: "GitHub 源代码",
   noPending: "暂无待处理信封",
+  noTasks: "暂无 AI 创建的任务",
+  sentEmpty: "暂无成功发送",
   trashEmpty: "回收站为空",
   noExpired: "没有过期信封",
   waiting: "等待 agent 请求",
@@ -181,6 +302,19 @@ const zhText: Record<string, string> = {
   password: "密码",
   adminSignIn: "管理员登录",
   adminLoginFailed: "管理员登录失败",
+  passkeySignIn: "使用 Passkey 登录",
+  passkeyUseEmail: "请先输入邮箱，再使用 Passkey 登录。",
+  passkeyUnsupported: "当前浏览器或当前站点不支持 Passkey。",
+  passkeyLoginFailed: "Passkey 登录失败",
+  passkeys: "Passkeys",
+  passkeyHelp: "登录后可在当前设备或密码管理器中绑定 Passkey；下次输入邮箱后即可无密码登录。",
+  addPasskey: "绑定 Passkey",
+  passkeyName: "Passkey 名称",
+  noPasskeys: "尚未绑定 Passkey",
+  removePasskey: "删除 Passkey",
+  passkeyAdded: "Passkey 已绑定。",
+  passkeyRemoved: "Passkey 已删除。",
+  passkeyRegisterFailed: "Passkey 绑定失败",
   administrator: "管理员",
   human: "用户",
   user: "用户",
@@ -197,6 +331,15 @@ const zhText: Record<string, string> = {
   clear: "清空",
   humans: "用户",
   searchProfile: "搜索简介或 #标签",
+  introCode: "好友代码",
+  addByIntroCode: "按好友代码添加好友",
+  addFriend: "添加好友",
+  acceptFriend: "接受好友",
+  removeFriend: "移除好友",
+  friendPending: "已发送申请",
+  friends: "好友",
+  incomingRequests: "收到的申请",
+  outgoingRequests: "已发送申请",
   noHumans: "没有找到用户",
   noTags: "暂无标签",
   profileMissing: "暂无简介",
@@ -214,6 +357,10 @@ const zhText: Record<string, string> = {
   reset: "重置",
   publicProfile: "个人简介",
   profileHelp: "Agent 可以搜索这个简介和 #标签，建议说明能力、可用时间和注意事项。",
+  onboardingTitle: "首次配置",
+  onboardingHelp: "完成简介、标签、公开状态和好友代码确认后，Agent 才能稳定地把任务和好友关系关联到你。",
+  publicUser: "公开出现在用户目录",
+  privateUserHelp: "关闭公开后，别人只能通过好友代码发送好友申请；好友仍然能看到你。",
   profile: "简介",
   useTemplate: "使用模板",
   saveProfile: "保存简介",
@@ -240,10 +387,12 @@ const zhText: Record<string, string> = {
   kick: "踢出",
   agentTitle: "接入 Agent",
   agentSubtitle: "把 humen-mcp 添加到 Codex、Claude Code 或任何支持 MCP 的 Agent 软件。",
-  publicMcp: "当前公开访问，不需要 Agent Secret。",
-  secretMcp: "当前需要 Agent Secret。",
-  adminAgentSecret: "管理员：Agent Secret",
-  agentSecretHelp: "全局唯一。留空表示 MCP endpoint 公开；填写后 Agent 请求必须带这个 secret。",
+  secretMcp: "此 MCP 服务器强制要求 Agent Secret。",
+  adminAgentSecret: "管理员：Secret 前缀",
+  agentSecretHelp: "最终 secret = 管理员前缀 + 你的个人 secret。管理员轮换前缀会让全部旧 secret 失效。",
+  personalAgentSecret: "个人 Agent Secret",
+  allowAgentDirectory: "允许 Agent 查看所有人类",
+  allowAgentDirectoryRisk: "风险：开启后，任何拿到有效 secret 的 Agent 都可以搜索全部用户目录，而不只看到自己的账号。",
   random: "随机生成",
   saveSecret: "保存 secret",
   savingAgent: "正在保存 Agent 访问配置...",
@@ -266,13 +415,18 @@ const enText: Record<string, string> = {
   online: "online",
   refresh: "Refresh",
   inbox: "Inbox",
+  tasks: "Tasks",
+  sent: "Sent",
   trash: "Trash",
   directory: "Directory",
   tags: "Tags",
   agent: "Connect Agent",
   adminSettings: "Admin & Settings",
   settings: "Settings",
+  sourceCode: "GitHub source",
   noPending: "No pending envelopes",
+  noTasks: "No AI-created tasks",
+  sentEmpty: "No sent replies",
   trashEmpty: "Trash is empty",
   noExpired: "No expired envelopes",
   waiting: "Waiting for agent requests",
@@ -280,6 +434,19 @@ const enText: Record<string, string> = {
   password: "Password",
   adminSignIn: "Admin sign in",
   adminLoginFailed: "Admin login failed",
+  passkeySignIn: "Sign in with Passkey",
+  passkeyUseEmail: "Enter your email before signing in with a passkey.",
+  passkeyUnsupported: "This browser or origin does not support passkeys.",
+  passkeyLoginFailed: "Passkey sign-in failed",
+  passkeys: "Passkeys",
+  passkeyHelp: "After signing in, bind a passkey on this device or password manager. Next time, enter your email and sign in without a password.",
+  addPasskey: "Add passkey",
+  passkeyName: "Passkey name",
+  noPasskeys: "No passkeys added",
+  removePasskey: "Remove passkey",
+  passkeyAdded: "Passkey added.",
+  passkeyRemoved: "Passkey removed.",
+  passkeyRegisterFailed: "Passkey registration failed",
   administrator: "Administrator",
   human: "Human",
   user: "User",
@@ -296,6 +463,15 @@ const enText: Record<string, string> = {
   clear: "Clear",
   humans: "Humans",
   searchProfile: "Search profile or #tag",
+  introCode: "Friend code",
+  addByIntroCode: "Add by friend code",
+  addFriend: "Add friend",
+  acceptFriend: "Accept friend",
+  removeFriend: "Remove friend",
+  friendPending: "Request sent",
+  friends: "Friends",
+  incomingRequests: "Incoming requests",
+  outgoingRequests: "Outgoing requests",
   noHumans: "No humans found",
   noTags: "No tags yet",
   profileMissing: "No profile",
@@ -313,6 +489,10 @@ const enText: Record<string, string> = {
   reset: "Reset",
   publicProfile: "Public profile",
   profileHelp: "Agents can search this profile and #tags. Include skills, availability, and notes.",
+  onboardingTitle: "First-time setup",
+  onboardingHelp: "Confirm your profile, tags, public visibility, and friend code so agents and friends map to your account correctly.",
+  publicUser: "Show publicly in the user directory",
+  privateUserHelp: "When public is off, others can still send friend requests with your friend code. Friends can still see you.",
   profile: "Profile",
   useTemplate: "Use template",
   saveProfile: "Save profile",
@@ -339,10 +519,12 @@ const enText: Record<string, string> = {
   kick: "Kick",
   agentTitle: "Connect Agent",
   agentSubtitle: "Add humen-mcp to Codex, Claude Code, or any MCP-capable agent.",
-  publicMcp: "This MCP endpoint is public. No Agent Secret is required.",
-  secretMcp: "This MCP endpoint requires an Agent Secret.",
-  adminAgentSecret: "Admin: Agent Secret",
-  agentSecretHelp: "Global secret. Empty means public MCP endpoint; non-empty requires agents to send this secret.",
+  secretMcp: "This MCP server always requires an Agent Secret.",
+  adminAgentSecret: "Admin: Secret prefix",
+  agentSecretHelp: "Final secret = admin prefix + your personal secret. Rotating the prefix invalidates every old secret.",
+  personalAgentSecret: "Personal Agent Secret",
+  allowAgentDirectory: "Allow agents to see all humans",
+  allowAgentDirectoryRisk: "Risk: when enabled, any agent with a valid secret can search the full human directory instead of only its own account.",
   random: "Random",
   saveSecret: "Save secret",
   savingAgent: "Saving agent access...",
@@ -389,6 +571,8 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [view, setView] = useState<View>("inbox");
   const [requests, setRequests] = useState<HumanRequest[]>([]);
+  const [tasks, setTasks] = useState<AgentTask[]>([]);
+  const [sent, setSent] = useState<AnsweredRequest[]>([]);
   const [trash, setTrash] = useState<ExpiredRequest[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<UserProfile[]>([]);
   const [directory, setDirectory] = useState<UserProfile[]>([]);
@@ -430,7 +614,7 @@ function App() {
         return response.json();
       })
       .then((data) => setUser(data.user))
-      .catch(() => logout(setToken, setUser, setRequests, setTrash));
+      .catch(() => logout(setToken, setUser, setRequests, setTasks, setSent, setTrash));
   }, [token]);
 
   useEffect(() => {
@@ -441,6 +625,7 @@ function App() {
       const message = JSON.parse(event.data);
       if (message.type === "snapshot") {
         setRequests(sortRequests(message.requests ?? []));
+        setTasks(sortAgentTasks(message.tasks ?? []));
         setOnlineCount(message.online_count ?? 0);
       }
       if (message.type === "request_created") {
@@ -448,10 +633,22 @@ function App() {
       }
       if (message.type === "request_answered") {
         setRequests((current) => current.filter((request) => request.id !== message.id));
+        if (message.request && message.answer) {
+          setSent((current) => upsertAnswered(current, {
+            request: message.request,
+            answer: message.answer,
+            answered_late: Boolean(message.answered_late)
+          }));
+        } else {
+          refreshSent(token, setSent);
+        }
       }
       if (message.type === "request_expired") {
         setRequests((current) => current.filter((request) => request.id !== message.id));
         setTrash((current) => sortTrash([message.expired_request, ...current]));
+      }
+      if (message.type === "task_created" || message.type === "task_updated") {
+        setTasks((current) => upsertAgentTask(current, message.task));
       }
       if (message.type === "trash_cleaned") {
         refreshTrash(token, setTrash);
@@ -477,6 +674,8 @@ function App() {
     setBusy(true);
     Promise.all([
       refreshRequests(token, setRequests),
+      refreshTasks(token, setTasks),
+      refreshSent(token, setSent),
       refreshTrash(token, setTrash),
       refreshUsers(token, setOnlineUsers, setDirectory, setTagStats),
       refreshAdmin(token, setIsAdmin, setAdminUsers, setAdminSettings)
@@ -502,6 +701,8 @@ function App() {
 
         <nav className="navList">
           <NavButton icon={<Inbox size={18} />} label={t("inbox")} count={requests.length} active={view === "inbox"} onClick={() => setView("inbox")} />
+          <NavButton icon={<ListChecks size={18} />} label={t("tasks")} count={tasks.filter((task) => task.status !== "done" && task.status !== "archived").length} active={view === "tasks"} onClick={() => setView("tasks")} />
+          <NavButton icon={<Send size={18} />} label={t("sent")} count={sent.length} active={view === "sent"} onClick={() => setView("sent")} />
           <NavButton icon={<Trash2 size={18} />} label={t("trash")} count={trash.length} active={view === "trash"} onClick={() => setView("trash")} />
           <NavButton icon={<Users size={18} />} label={t("directory")} count={onlineUsers.length} active={view === "directory"} onClick={() => setView("directory")} />
           <NavButton icon={<Tags size={18} />} label={t("tags")} count={tagStats.length} active={view === "tags"} onClick={() => setView("tags")} />
@@ -524,6 +725,21 @@ function App() {
           </div>
         )}
 
+        {view === "sent" && (
+          <div className="requestList">
+            {sent.map((entry) => (
+              <button key={entry.request.id} className="requestItem sent">
+                <Send size={18} />
+                <span>
+                  <strong>{entry.request.title}</strong>
+                  <small>{formatTime(entry.answer.answered_at)}</small>
+                </span>
+              </button>
+            ))}
+            {sent.length === 0 && <div className="empty">{t("sentEmpty")}</div>}
+          </div>
+        )}
+
         {view === "trash" && (
           <div className="requestList">
             {trash.map((entry) => (
@@ -536,6 +752,21 @@ function App() {
               </button>
             ))}
             {trash.length === 0 && <div className="empty">{t("trashEmpty")}</div>}
+          </div>
+        )}
+
+        {view === "tasks" && (
+          <div className="requestList">
+            {tasks.slice(0, 40).map((task) => (
+              <button key={task.id} className={`requestItem taskStatus-${task.status}`}>
+                <ListChecks size={18} />
+                <span>
+                  <strong>{task.title}</strong>
+                  <small>{taskStatusLabel(task.status)} · {formatTime(task.updated_at)}</small>
+                </span>
+              </button>
+            ))}
+            {tasks.length === 0 && <div className="empty">{t("noTasks")}</div>}
           </div>
         )}
 
@@ -556,11 +787,13 @@ function App() {
           setPreferences={setPreferences}
           isAdmin={isAdmin}
           onSettings={() => setView("settings")}
-          onLogout={() => logout(setToken, setUser, setRequests, setTrash)}
+          onLogout={() => logout(setToken, setUser, setRequests, setTasks, setSent, setTrash)}
         />
         {view === "inbox" && (selected ? <TaskPanel request={selected} token={token} now={now} afterSubmit={() => setSelectedId(null)} /> : <Blank />)}
+        {view === "tasks" && <AgentTasksView tasks={tasks} token={token} setTasks={setTasks} />}
+        {view === "sent" && <SentView sent={sent} />}
         {view === "trash" && <TrashView trash={trash} token={token} setTrash={setTrash} />}
-        {view === "directory" && <DirectoryView query={query} setQuery={setQuery} users={directory} tags={tagStats} />}
+        {view === "directory" && <DirectoryView query={query} setQuery={setQuery} users={directory} tags={tagStats} token={token} currentUser={user.email} onChanged={() => refreshUsers(token, setOnlineUsers, setDirectory, setTagStats)} />}
         {view === "tags" && <TagsView tags={tagStats} setQuery={setQuery} setView={setView} />}
         {view === "agent" && (
           <AgentView
@@ -616,6 +849,7 @@ function Login({ onToken }: { onToken: (token: string) => void }) {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [error, setError] = useState("");
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
   const [authConfig, setAuthConfig] = useState<AuthConfig>({ github_enabled: false, allow_registration: true });
 
   useEffect(() => {
@@ -642,10 +876,62 @@ function Login({ onToken }: { onToken: (token: string) => void }) {
     onToken(data.token);
   }
 
+  async function signInWithPasskey() {
+    setError("");
+    if (!passkeysSupported() || authConfig.passkey_enabled === false) {
+      setError(t("passkeyUnsupported"));
+      return;
+    }
+    if (!email.trim()) {
+      setError(t("passkeyUseEmail"));
+      return;
+    }
+    setPasskeyBusy(true);
+    try {
+      const start = await fetch(apiPath("/api/auth/passkey/start"), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email })
+      });
+      if (!start.ok) {
+        setError((await safeError(start)) || t("passkeyLoginFailed"));
+        return;
+      }
+      const challenge = (await start.json()) as PasskeyAuthenticationStart;
+      const credential = (await navigator.credentials.get(decodeCredentialRequestOptions(challenge.options))) as PublicKeyCredential | null;
+      if (!credential) {
+        setError(t("passkeyLoginFailed"));
+        return;
+      }
+      const finish = await fetch(apiPath("/api/auth/passkey/finish"), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          authentication_id: challenge.authentication_id,
+          credential: publicKeyCredentialToJson(credential)
+        })
+      });
+      if (!finish.ok) {
+        setError((await safeError(finish)) || t("passkeyLoginFailed"));
+        return;
+      }
+      const data = await finish.json();
+      localStorage.setItem(tokenKey, data.token);
+      onToken(data.token);
+    } catch {
+      setError(t("passkeyLoginFailed"));
+    } finally {
+      setPasskeyBusy(false);
+    }
+  }
+
   return (
     <main className="loginShell">
       <form className="loginPanel" onSubmit={submit}>
-        <h1>humen-mcp</h1>
+        <div className="loginHead">
+          <h1>humen-mcp</h1>
+          <SourceLink />
+        </div>
         <label>
           Email
           <input value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" />
@@ -657,6 +943,9 @@ function Login({ onToken }: { onToken: (token: string) => void }) {
         {error && <p className="error">{error}</p>}
         <button className="primary" type="submit">
           <Check size={18} /> {t("adminSignIn")}
+        </button>
+        <button className="secondary" type="button" onClick={signInWithPasskey} disabled={passkeyBusy || authConfig.passkey_enabled === false}>
+          <KeyRound size={18} /> {t("passkeySignIn")}
         </button>
         <OAuthLoginButtons config={authConfig} />
       </form>
@@ -727,8 +1016,9 @@ function TopBar({
   const displayName = preferences.displayName.trim() || user.email;
   return (
     <header className="topbar">
-      <div>
+      <div className="topbarLead">
         <span className="mode">{isAdmin ? t("administrator") : t("human")}</span>
+        <SourceLink />
       </div>
       <div className="userMenu">
         <button
@@ -766,14 +1056,23 @@ function TopBar({
   );
 }
 
+function SourceLink() {
+  return (
+    <a className="sourceLink" href={sourceUrl} target="_blank" rel="noreferrer">
+      <Github size={18} />
+      <span>{t("sourceCode")}</span>
+    </a>
+  );
+}
+
 function TaskPanel({ request, token, now, afterSubmit }: { request: HumanRequest; token: string; now: number; afterSubmit: () => void }) {
-  const [answer, setAnswer] = useState(request.choices[0] ?? "");
+  const [answer, setAnswer] = useState(defaultRequestAnswer(request));
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const imageSrc = imageSource(request);
 
   useEffect(() => {
-    setAnswer(request.choices[0] ?? "");
+    setAnswer(defaultRequestAnswer(request));
     setNote("");
   }, [request.id]);
 
@@ -816,7 +1115,18 @@ function TaskPanel({ request, token, now, afterSubmit }: { request: HumanRequest
         </ol>
       )}
 
-      {request.choices.length > 0 ? (
+      {request.kind === "judgment" ? (
+        <div className="judgmentChoices">
+          <button className={`judgmentButton yes ${answer === "yes" ? "chosen" : ""}`} onClick={() => setAnswer("yes")}>
+            <Check size={22} />
+            <span>{currentLanguage() === "zh" ? "是" : "Yes"}</span>
+          </button>
+          <button className={`judgmentButton no ${answer === "no" ? "chosen" : ""}`} onClick={() => setAnswer("no")}>
+            <X size={22} />
+            <span>{currentLanguage() === "zh" ? "否" : "No"}</span>
+          </button>
+        </div>
+      ) : request.choices.length > 0 ? (
         <div className="choices">
           {request.choices.map((choice) => (
             <button key={choice} className={answer === choice ? "chosen" : ""} onClick={() => setAnswer(choice)}>
@@ -837,6 +1147,35 @@ function TaskPanel({ request, token, now, afterSubmit }: { request: HumanRequest
         </button>
       </footer>
     </article>
+  );
+}
+
+function SentView({ sent }: { sent: AnsweredRequest[] }) {
+  return (
+    <section className="page">
+      <div className="pageTitle">
+        <h2>{t("sent")}</h2>
+      </div>
+      <div className="gridList">
+        {sent.map((entry) => (
+          <article className="listCard" key={entry.request.id}>
+            <div className="cardHead">
+              <Send size={18} />
+              <strong>{entry.request.title}</strong>
+            </div>
+            <p>{entry.answer.answer}</p>
+            {entry.answer.note && <small>{entry.answer.note}</small>}
+            <div className="metaRow">
+              <span>{entry.answer.answered_by}</span>
+              <span>{formatTime(entry.answer.answered_at)}</span>
+              {entry.answered_late && <span>{t("expired")}</span>}
+            </div>
+            <div className="tagRow">{entry.request.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
+          </article>
+        ))}
+        {sent.length === 0 && <Blank text={t("sentEmpty")} />}
+      </div>
+    </section>
   );
 }
 
@@ -872,7 +1211,198 @@ function TrashView({ trash, token, setTrash }: { trash: ExpiredRequest[]; token:
   );
 }
 
-function DirectoryView({ query, setQuery, users, tags }: { query: string; setQuery: (query: string) => void; users: UserProfile[]; tags: TagStat[] }) {
+type TaskFilter = "active" | "all" | AgentTaskStatus;
+
+function AgentTasksView({
+  tasks,
+  token,
+  setTasks
+}: {
+  tasks: AgentTask[];
+  token: string;
+  setTasks: (tasks: AgentTask[]) => void;
+}) {
+  const [filter, setFilter] = useState<TaskFilter>("active");
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const visible = tasks.filter((task) => {
+    if (filter === "all") return true;
+    if (filter === "active") return task.status === "open" || task.status === "in_progress";
+    return task.status === filter;
+  });
+
+  async function refresh() {
+    await refreshTasks(token, setTasks);
+  }
+
+  async function setStatus(task: AgentTask, status: AgentTaskStatus) {
+    setBusyId(task.id);
+    try {
+      const response = await fetch(apiPath(`/api/tasks/${task.id}/status`), {
+        method: "POST",
+        headers: { ...authHeaders(token), "content-type": "application/json" },
+        body: JSON.stringify({
+          status,
+          note: notes[task.id] ?? task.human_note ?? null
+        })
+      });
+      const updated = await safeJson<AgentTask>(response);
+      if (updated) setTasks(upsertAgentTask(tasks, updated));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <section className="page">
+      <div className="pageTitle">
+        <div>
+          <h2>{t("tasks")}</h2>
+          <p>Agent 创建的任务会出现在这里。</p>
+        </div>
+        <button className="secondary" onClick={refresh}>
+          <RefreshCw size={17} /> {t("refresh")}
+        </button>
+      </div>
+
+      <div className="segmented taskFilters">
+        {(["active", "open", "in_progress", "done", "archived", "all"] as TaskFilter[]).map((item) => (
+          <button key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>
+            {taskFilterLabel(item)}
+          </button>
+        ))}
+      </div>
+
+      <div className="gridList taskGrid">
+        {visible.map((task) => (
+          <article className="listCard taskCard" key={task.id}>
+            <div className="cardHead">
+              <ListChecks size={18} />
+              <strong>{task.title}</strong>
+              <span className={`statusPill taskStatus-${task.status}`}>{taskStatusLabel(task.status)}</span>
+            </div>
+            {task.description && <p>{task.description}</p>}
+            {task.steps.length > 0 && (
+              <ol className="compactSteps">
+                {task.steps.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+            )}
+            <div className="metaRow">
+              <span>{formatTime(task.created_at)}</span>
+              {task.due_at && <span>{currentLanguage() === "zh" ? "截止" : "Due"} {formatTime(task.due_at)}</span>}
+              {task.completed_at && <span>{currentLanguage() === "zh" ? "完成" : "Done"} {formatTime(task.completed_at)}</span>}
+            </div>
+            <div className="tagRow">{task.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
+            <textarea
+              className="note compactNote"
+              value={notes[task.id] ?? task.human_note ?? ""}
+              onChange={(event) => setNotes((current) => ({ ...current, [task.id]: event.target.value }))}
+              placeholder={t("note")}
+            />
+            <div className="rowActions">
+              {task.status !== "in_progress" && task.status !== "done" && task.status !== "archived" && (
+                <button className="secondary" disabled={busyId === task.id} onClick={() => setStatus(task, "in_progress")}>
+                  <Clock3 size={16} /> {taskStatusLabel("in_progress")}
+                </button>
+              )}
+              {task.status !== "done" && task.status !== "archived" && (
+                <button className="primary" disabled={busyId === task.id} onClick={() => setStatus(task, "done")}>
+                  <Check size={16} /> {taskStatusLabel("done")}
+                </button>
+              )}
+              {task.status === "done" && (
+                <button className="secondary" disabled={busyId === task.id} onClick={() => setStatus(task, "open")}>
+                  <RefreshCw size={16} /> {taskStatusLabel("open")}
+                </button>
+              )}
+              {task.status !== "archived" && (
+                <button className="secondary" disabled={busyId === task.id} onClick={() => setStatus(task, "archived")}>
+                  <Trash2 size={16} /> {taskStatusLabel("archived")}
+                </button>
+              )}
+            </div>
+          </article>
+        ))}
+        {visible.length === 0 && <Blank text={t("noTasks")} />}
+      </div>
+    </section>
+  );
+}
+
+function DirectoryView({
+  query,
+  setQuery,
+  users,
+  tags,
+  token,
+  currentUser,
+  onChanged
+}: {
+  query: string;
+  setQuery: (query: string) => void;
+  users: UserProfile[];
+  tags: TagStat[];
+  token: string;
+  currentUser: string;
+  onChanged: () => void;
+}) {
+  const [introCode, setIntroCode] = useState("");
+  const [friends, setFriends] = useState<FriendBundle>({ friends: [], incoming: [], outgoing: [] });
+  const [status, setStatus] = useState("");
+
+  useEffect(() => {
+    refreshFriends();
+  }, [token]);
+
+  async function refreshFriends() {
+    const response = await fetch(apiPath("/api/friends"), { headers: authHeaders(token) });
+    const data = await safeJson<FriendBundle>(response);
+    if (data) setFriends(data);
+  }
+
+  async function createFriendRequest(body: { email?: string; friend_code?: string; intro_code?: string }) {
+    setStatus("");
+    const response = await fetch(apiPath("/api/friends"), {
+      method: "POST",
+      headers: { ...authHeaders(token), "content-type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) {
+      setStatus((await safeError(response)) || "Request failed");
+      return;
+    }
+    setIntroCode("");
+    await refreshFriends();
+    onChanged();
+  }
+
+  async function addByIntroCode(event: FormEvent) {
+    event.preventDefault();
+    const code = introCode.trim();
+    if (!code) return;
+    await createFriendRequest({ friend_code: code });
+  }
+
+  async function acceptFriend(email: string) {
+    await fetch(apiPath(`/api/friends/${encodeURIComponent(email)}/accept`), {
+      method: "POST",
+      headers: authHeaders(token)
+    });
+    await refreshFriends();
+    onChanged();
+  }
+
+  async function removeFriend(email: string) {
+    await fetch(apiPath(`/api/friends/${encodeURIComponent(email)}/remove`), {
+      method: "POST",
+      headers: authHeaders(token)
+    });
+    await refreshFriends();
+    onChanged();
+  }
+
   return (
     <section className="page">
       <div className="pageTitle">
@@ -889,11 +1419,77 @@ function DirectoryView({ query, setQuery, users, tags }: { query: string; setQue
           </button>
         ))}
       </div>
+      <form className="introAddRow" onSubmit={addByIntroCode}>
+        <label>
+          <span>{t("introCode")}</span>
+          <input value={introCode} onChange={(event) => setIntroCode(event.target.value)} placeholder="hm-xxxxxxxx" />
+        </label>
+        <button className="secondary" disabled={!introCode.trim()}>
+          <UserPlus size={16} /> {t("addByIntroCode")}
+        </button>
+      </form>
+      {status && <div className="notice warning">{status}</div>}
+      {(friends.incoming.length > 0 || friends.outgoing.length > 0 || friends.friends.length > 0) && (
+        <section className="relationPanel">
+          {friends.incoming.length > 0 && (
+            <RelationStrip title={t("incomingRequests")} users={friends.incoming} action={(profile) => (
+              <button className="secondary small" onClick={() => acceptFriend(profile.email)}>
+                <Check size={15} /> {t("acceptFriend")}
+              </button>
+            )} />
+          )}
+          {friends.outgoing.length > 0 && (
+            <RelationStrip title={t("outgoingRequests")} users={friends.outgoing} action={() => (
+              <span className="statusPill">{t("friendPending")}</span>
+            )} />
+          )}
+          {friends.friends.length > 0 && (
+            <RelationStrip title={t("friends")} users={friends.friends} action={(profile) => (
+              <button className="secondary small" onClick={() => removeFriend(profile.email)}>
+                <Trash2 size={15} /> {t("removeFriend")}
+              </button>
+            )} />
+          )}
+        </section>
+      )}
       <div className="gridList">
-        {users.map((profile) => <UserCard key={profile.email} profile={profile} />)}
+        {users.map((profile) => (
+          <UserCard
+            key={profile.email}
+            profile={profile}
+            currentUser={currentUser}
+            onAdd={(email) => createFriendRequest({ email })}
+            onAccept={acceptFriend}
+            onRemove={removeFriend}
+          />
+        ))}
         {users.length === 0 && <Blank text={t("noHumans")} />}
       </div>
     </section>
+  );
+}
+
+function RelationStrip({
+  title,
+  users,
+  action
+}: {
+  title: string;
+  users: UserProfile[];
+  action: (profile: UserProfile) => React.ReactNode;
+}) {
+  return (
+    <div className="relationStrip">
+      <strong>{title}</strong>
+      <div>
+        {users.map((profile) => (
+          <article key={profile.email} className="relationItem">
+            <span>{profile.email}</span>
+            {action(profile)}
+          </article>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -928,7 +1524,10 @@ function AgentView({
   setSettings: (settings: AdminSettings | null) => void;
 }) {
   const [access, setAccess] = useState<AgentAccess | null>(null);
-  const [secretDraft, setSecretDraft] = useState("");
+  const [userSecretDraft, setUserSecretDraft] = useState("");
+  const [prefixDraft, setPrefixDraft] = useState("");
+  const [allowDirectoryDraft, setAllowDirectoryDraft] = useState(false);
+  const [riskAccepted, setRiskAccepted] = useState(false);
   const [status, setStatus] = useState("");
   const [copyStatus, setCopyStatus] = useState("");
 
@@ -937,18 +1536,46 @@ function AgentView({
   }, [token]);
 
   useEffect(() => {
-    setSecretDraft(settings?.agent_secret ?? "");
-  }, [settings?.agent_secret]);
+    setPrefixDraft(settings?.agent_secret_prefix ?? "");
+    setAllowDirectoryDraft(Boolean(settings?.allow_agent_directory));
+  }, [settings?.agent_secret_prefix, settings?.allow_agent_directory]);
+
+  useEffect(() => {
+    if (access) setUserSecretDraft(access.user_agent_secret ?? "");
+  }, [access?.user_agent_secret]);
 
   async function refresh() {
     const data = await fetch(apiPath("/api/agent/access"), { headers: authHeaders(token) }).then((response) => safeJson<AgentAccess>(response));
     if (data) setAccess(data);
   }
 
-  async function saveSecret() {
-    if (!settings) return;
+  async function saveUserSecret() {
     setStatus(t("savingAgent"));
-    const next = { ...settings, agent_secret: secretDraft.trim() || null };
+    const response = await fetch(apiPath("/api/agent/secret"), {
+      method: "POST",
+      headers: { ...authHeaders(token), "content-type": "application/json" },
+      body: JSON.stringify({ agent_secret: userSecretDraft.trim() || null })
+    });
+    if (!response.ok) {
+      setStatus((await safeError(response)) || "Save failed");
+      return;
+    }
+    setAccess(await response.json());
+    setStatus(t("agentSaved"));
+  }
+
+  async function saveAdminAgentSettings() {
+    if (!settings) return;
+    if (allowDirectoryDraft && !riskAccepted && !settings.allow_agent_directory) {
+      setStatus(t("allowAgentDirectoryRisk"));
+      return;
+    }
+    setStatus(t("savingAgent"));
+    const next = {
+      ...settings,
+      agent_secret_prefix: prefixDraft.trim() || null,
+      allow_agent_directory: allowDirectoryDraft
+    };
     const response = await fetch(apiPath("/api/admin/settings"), {
       method: "POST",
       headers: { ...authHeaders(token), "content-type": "application/json" },
@@ -965,7 +1592,7 @@ function AgentView({
 
   const mcpUrl = normalizeMcpUrl(access?.mcp_url ?? defaultMcpUrl());
   const accessKey = access?.agent_secret ?? "";
-  const headerLine = accessKey ? " -H '" + "x-humen-agent-secret" + ": " + accessKey + "'" : "";
+  const headerLine = " -H '" + "x-humen-agent-secret" + ": " + accessKey + "'";
   const installPrompt = agentInstallPrompt(mcpUrl, accessKey);
   return (
     <section className="page">
@@ -985,7 +1612,7 @@ function AgentView({
             <Shield size={18} />
             <div>
               <h3>MCP Endpoint</h3>
-              <p>{access?.secret_required ? t("secretMcp") : t("publicMcp")}</p>
+              <p>{t("secretMcp")}</p>
             </div>
           </div>
         </div>
@@ -993,12 +1620,40 @@ function AgentView({
           <span>URL</span>
           <input value={mcpUrl} readOnly onFocus={(event) => event.currentTarget.select()} />
         </label>
-        {accessKey && (
-          <label className="copyField">
-            <span>Agent Secret</span>
-            <input value={accessKey} readOnly onFocus={(event) => event.currentTarget.select()} />
-          </label>
-        )}
+        <label className="copyField">
+          <span>Agent Secret</span>
+          <input value={accessKey} readOnly onFocus={(event) => event.currentTarget.select()} />
+        </label>
+        <label className="copyField">
+          <span>{t("introCode")}</span>
+          <input value={access?.friend_code ?? access?.intro_code ?? ""} readOnly onFocus={(event) => event.currentTarget.select()} />
+        </label>
+      </section>
+
+      <section className="panel">
+        <div className="panelHead">
+          <div className="panelTitle">
+            <UserCircle size={18} />
+            <div>
+              <h3>{t("personalAgentSecret")}</h3>
+              <p>{t("agentSecretHelp")}</p>
+            </div>
+          </div>
+        </div>
+        <label className="copyField">
+          <span>{t("adminAgentSecret")}</span>
+          <input value={access?.agent_secret_prefix ?? ""} readOnly onFocus={(event) => event.currentTarget.select()} />
+        </label>
+        <div className="agentSecretRow">
+          <input type="password" value={userSecretDraft} onChange={(event) => setUserSecretDraft(event.target.value)} placeholder="Personal secret suffix" />
+          <button className="secondary" onClick={() => setUserSecretDraft(randomSecret().slice(0, 32))}>
+            <RefreshCw size={17} /> {t("random")}
+          </button>
+          <button className="primary" onClick={saveUserSecret}>
+            <Check size={17} /> {t("saveSecret")}
+          </button>
+        </div>
+        {status && <div className={status.endsWith(".") ? "notice" : "notice warning"}>{status}</div>}
       </section>
 
       {isAdmin && settings && (
@@ -1013,15 +1668,24 @@ function AgentView({
             </div>
           </div>
           <div className="agentSecretRow">
-            <input type="password" value={secretDraft} onChange={(event) => setSecretDraft(event.target.value)} placeholder="Leave empty for public MCP endpoint" />
-            <button className="secondary" onClick={() => setSecretDraft(randomSecret())}>
+            <input type="password" value={prefixDraft} onChange={(event) => setPrefixDraft(event.target.value)} placeholder="Global secret prefix" />
+            <button className="secondary" onClick={() => setPrefixDraft(`humen-${randomSecret().slice(0, 18)}-`)}>
               <RefreshCw size={17} /> {t("random")}
             </button>
-            <button className="primary" onClick={saveSecret}>
+            <button className="primary" onClick={saveAdminAgentSettings}>
               <Check size={17} /> {t("saveSecret")}
             </button>
           </div>
-          {status && <div className={status.endsWith(".") ? "notice" : "notice warning"}>{status}</div>}
+          <label className="toggleRow">
+            <span>{t("allowAgentDirectory")}</span>
+            <input type="checkbox" checked={allowDirectoryDraft} onChange={(event) => setAllowDirectoryDraft(event.target.checked)} />
+          </label>
+          {allowDirectoryDraft && (
+            <label className="toggleRow riskToggle">
+              <span>{t("allowAgentDirectoryRisk")}</span>
+              <input type="checkbox" checked={riskAccepted || settings.allow_agent_directory} onChange={(event) => setRiskAccepted(event.target.checked)} />
+            </label>
+          )}
         </section>
       )}
 
@@ -1049,10 +1713,10 @@ function AgentView({
             <pre>{`{
   "mcpServers": {
     "humen": {
-      "url": "${mcpUrl}"${accessKey ? `,
+      "url": "${mcpUrl}",
       "headers": {
         "x-humen-agent-secret": "${accessKey}"
-      }` : ""}
+      }
     }
   }
 }`}</pre>
@@ -1060,8 +1724,8 @@ function AgentView({
           <section>
             <h4>curl 测试</h4>
             <pre>{`curl '${mcpUrl}' \\
-  -H 'content-type: application/json'${headerLine ? ` \\
- ${headerLine}` : ""} \\
+  -H 'content-type: application/json' \\
+ ${headerLine} \\
   --data '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'`}</pre>
           </section>
           <section>
@@ -1070,9 +1734,9 @@ function AgentView({
               <li>优先使用 Codex CLI、Claude CLI 或对应客户端自带的 MCP 添加命令 / 设置页。</li>
               <li>新增一个名为 <code>humen</code> 的 remote/http MCP server。</li>
               <li>URL 填上面的 MCP Endpoint。</li>
-              <li>如果显示需要 Secret，在 headers 里加入 <code>x-humen-agent-secret</code>。</li>
+              <li>headers 里加入 <code>x-humen-agent-secret</code>，值为上面的完整 Agent Secret。</li>
               <li>如果当前是 CLI 工具，请用命令行添加；不要直接编辑配置文件。</li>
-              <li>保存后重启 Agent，执行 tools/list 确认能看到 ask_humen。</li>
+              <li>保存后重启 Agent，执行 tools/list 确认能看到 ask_humen 和 create_humen_task。</li>
             </ol>
           </section>
         </div>
@@ -1092,22 +1756,36 @@ function WebhookView({
 }) {
   const [drafts, setDrafts] = useState<WebhookConfig[]>(() => settings.webhooks ?? []);
   const [status, setStatus] = useState("");
-  const [copyStatus, setCopyStatus] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     setDrafts(settings.webhooks ?? []);
   }, [settings.webhooks]);
+
+  useEffect(() => {
+    const waitingIds = drafts
+      .filter((webhook) => webhook.kind === "wechat")
+      .filter((webhook) => webhook.weixin_qrcode_url && !webhook.weixin_bot_token)
+      .filter((webhook) => ["wait", "waiting", "scaned", "scanned"].includes((webhook.weixin_status ?? "wait").toLowerCase()))
+      .map((webhook) => webhook.id);
+    if (waitingIds.length === 0) return;
+    const handle = window.setInterval(() => {
+      waitingIds.forEach((id) => void refreshWeixinStatus(id, true));
+    }, 2500);
+    return () => window.clearInterval(handle);
+  }, [drafts, token]);
 
   function addWebhook(kind: WebhookConfig["kind"] = "generic") {
     setDrafts((current) => [
       ...current,
       {
         id: randomId(),
-        name: kind === "wechat_clawbot" ? "微信 clawbot" : "Webhook",
+        name: "",
         url: "",
-        enabled: true,
-        secret: kind === "wechat_clawbot" ? randomSecret().slice(0, 32) : "",
-        kind
+        enabled: false,
+        secret: "",
+        kind,
+        help_prompt: defaultWebhookHelpPrompt
       }
     ]);
   }
@@ -1116,21 +1794,90 @@ function WebhookView({
     setDrafts((current) => current.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));
   }
 
-  async function save() {
+  function replaceWebhook(updated: WebhookConfig) {
+    setDrafts((current) => {
+      const next = current.map((item) => (item.id === updated.id ? updated : item));
+      setSettings({ ...settings, webhooks: next });
+      return next;
+    });
+  }
+
+  async function saveDrafts(nextDrafts = drafts, savedMessage = "已保存。") {
     setStatus("正在保存 webhooks...");
     const response = await fetch(apiPath("/api/admin/webhooks"), {
       method: "POST",
       headers: { ...authHeaders(token), "content-type": "application/json" },
-      body: JSON.stringify({ webhooks: drafts })
+      body: JSON.stringify({ webhooks: nextDrafts })
     });
     if (!response.ok) {
       setStatus((await safeError(response)) || "保存失败");
-      return;
+      return null;
     }
     const saved = (await response.json()) as WebhookConfig[];
     setDrafts(saved);
     setSettings({ ...settings, webhooks: saved });
-    setStatus("已保存。");
+    setStatus(savedMessage);
+    return saved;
+  }
+
+  async function save() {
+    await saveDrafts();
+  }
+
+  async function startWeixinLogin(id: string) {
+    setBusyId(id);
+    try {
+      const saved = await saveDrafts(drafts, "已保存，正在生成二维码...");
+      if (!saved) return;
+      const response = await fetch(apiPath(`/api/admin/webhooks/${id}/weixin/login/start`), {
+        method: "POST",
+        headers: authHeaders(token)
+      });
+      if (!response.ok) {
+        setStatus((await safeError(response)) || "生成二维码失败");
+        return;
+      }
+      replaceWebhook((await response.json()) as WebhookConfig);
+      setStatus("请扫描二维码登录。");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function refreshWeixinStatus(id: string, silent = false) {
+    if (!silent) setBusyId(id);
+    try {
+      const response = await fetch(apiPath(`/api/admin/webhooks/${id}/weixin/login/status`), {
+        headers: authHeaders(token)
+      });
+      if (!response.ok) {
+        if (!silent) setStatus((await safeError(response)) || "刷新登录状态失败");
+        return;
+      }
+      const updated = (await response.json()) as WebhookConfig;
+      replaceWebhook(updated);
+      if (!silent) setStatus(updated.weixin_status_message ?? "已刷新登录状态。");
+    } finally {
+      if (!silent) setBusyId(null);
+    }
+  }
+
+  async function logoutWeixin(id: string) {
+    setBusyId(id);
+    try {
+      const response = await fetch(apiPath(`/api/admin/webhooks/${id}/weixin/logout`), {
+        method: "POST",
+        headers: authHeaders(token)
+      });
+      if (!response.ok) {
+        setStatus((await safeError(response)) || "退出登录失败");
+        return;
+      }
+      replaceWebhook((await response.json()) as WebhookConfig);
+      setStatus("已退出微信扫码登录。");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   return (
@@ -1138,11 +1885,11 @@ function WebhookView({
       <div className="pageTitle">
         <div>
           <h2>Webhooks</h2>
-          <p>收到 MCP 消息或微信 clawbot 消息时触发；微信消息会同步进入收件箱。</p>
+          <p>收到 MCP 消息或微信扫码登录消息时触发；微信消息会同步进入收件箱。</p>
         </div>
         <div className="rowActions">
-          <button className="secondary" onClick={() => addWebhook("wechat_clawbot")}>
-            <Plus size={17} /> 微信 clawbot
+          <button className="secondary" onClick={() => addWebhook("wechat")}>
+            <Plus size={17} /> 微信扫码
           </button>
           <button className="secondary" onClick={() => addWebhook("generic")}>
             <Plus size={17} /> 新增 webhook
@@ -1161,14 +1908,14 @@ function WebhookView({
             <Webhook size={18} />
             <div>
               <h3>触发规则</h3>
-              <p>Generic：ask_humen 创建消息时 POST 到目标 URL；微信 clawbot：ClawBot POST 到内置入口后创建消息并触发目标 URL。</p>
+              <p>Generic：ask_humen 创建消息时 POST 到目标 URL；微信：扫码登录后接收消息并可选转发到目标 URL。</p>
             </div>
           </div>
         </div>
         <pre>{`POST payload:
 {
   "event": "request_created" | "message_received",
-  "source": "mcp" | "wechat_clawbot",
+  "source": "mcp" | "wechat",
   "request": { ...HumanRequest },
   "raw": { ...incomingMessage }
 }`}</pre>
@@ -1176,9 +1923,8 @@ function WebhookView({
 
       <div className="webhookList">
         {drafts.map((webhook, index) => {
-          const incomingUrl = clawbotIncomingUrl(webhook.id, webhook.secret ?? "");
           return (
-            <article className="oauthCard webhookCard" key={webhook.id}>
+            <article className={`oauthCard webhookCard ${webhook.kind === "wechat" ? "wechatWebhookCard" : ""}`} key={webhook.id}>
               <div className="oauthCardGrid webhookGrid">
                 <label>
                   <span>名称</span>
@@ -1188,40 +1934,84 @@ function WebhookView({
                   <span>类型</span>
                   <select value={webhook.kind} onChange={(event) => patchWebhook(index, { kind: event.target.value })}>
                     <option value="generic">Generic webhook</option>
-                    <option value="wechat_clawbot">个人微信 IM（ClawBot）</option>
+                    <option value="wechat">个人微信 IM（扫码登录）</option>
                   </select>
                 </label>
                 <label>
                   <span>目标 URL（可选）</span>
                   <input value={webhook.url} onChange={(event) => patchWebhook(index, { url: event.target.value })} placeholder="https://example.com/webhook" />
                 </label>
-                <label>
+                <label className={webhook.kind === "wechat" ? "webhookSecretField hidden" : "webhookSecretField"}>
                   <span>Secret</span>
-                  <input type="password" value={webhook.secret ?? ""} onChange={(event) => patchWebhook(index, { secret: event.target.value })} placeholder="用于签名/ClawBot 入口校验" />
+                  <input type="password" value={webhook.secret ?? ""} onChange={(event) => patchWebhook(index, { secret: event.target.value })} placeholder="用于签名" />
                 </label>
               </div>
+              <label className="webhookHelpField">
+                <span>帮助信息提示词</span>
+                <small>这段文本会通过 webhook 发送给 IM 平台，作为人类回复 Agent 请求时看到的提示信息。默认说明比较完整并包含处理网址；熟悉流程后可以自由精简，留空表示不发送帮助信息。可用占位符：{"{url}"}、{"{request_id}"}、{"{short_id}"}、{"{title}"}。</small>
+                <textarea
+                  value={webhook.help_prompt ?? ""}
+                  onChange={(event) => patchWebhook(index, { help_prompt: event.target.value })}
+                  placeholder="留空则不发送帮助信息"
+                />
+              </label>
 
-              {webhook.kind === "wechat_clawbot" && (
-                <label className="copyField">
-                  <span>ClawBot 收消息入口</span>
-                  <div className="copyLine">
-                    <input value={incomingUrl} readOnly onFocus={(event) => event.currentTarget.select()} />
-                    <button className="secondary" onClick={() => copyToClipboard(incomingUrl, setCopyStatus)}>
-                      <Check size={16} /> 复制
-                    </button>
+              {webhook.kind === "wechat" && (
+                <section className="weixinLoginBox">
+                  <div className="weixinLoginHead">
+                    <div>
+                      <QrCode size={18} />
+                      <strong>微信扫码登录</strong>
+                    </div>
+                    <span className={`statusPill ${webhook.weixin_bot_token ? "onlineStatus" : ""}`}>
+                      {weixinStatusLabel(webhook)}
+                    </span>
                   </div>
-                  <small>把此 URL 配到微信 ClawBot 的消息回调；也可用请求头 x-humen-webhook-secret 传 Secret。</small>
-                </label>
+                  <div className="weixinLoginBody">
+                    {webhook.weixin_qrcode_url ? (
+                      <img className="weixinQr" src={webhook.weixin_qrcode_url} alt="微信扫码登录二维码" />
+                    ) : (
+                      <div className="weixinQr placeholder">
+                        <QrCode size={44} />
+                      </div>
+                    )}
+                    <div className="weixinLoginMeta">
+                      <p>{webhook.weixin_status_message || (webhook.weixin_bot_token ? "已登录" : "未登录")}</p>
+                      {webhook.weixin_account_id && <code>{webhook.weixin_account_id}</code>}
+                      {webhook.weixin_last_seen_at && <small>最近收到消息：{formatTime(webhook.weixin_last_seen_at)}</small>}
+                      {webhook.weixin_last_error && <small className="error">{webhook.weixin_last_error}</small>}
+                    </div>
+                  </div>
+                </section>
               )}
 
-              <div className="oauthActions">
+              <div className="oauthActions webhookActions">
                 <label className="toggleRow compact">
                   <span>启用</span>
                   <input type="checkbox" checked={webhook.enabled} onChange={(event) => patchWebhook(index, { enabled: event.target.checked })} />
                 </label>
-                <button className="secondary" onClick={() => patchWebhook(index, { secret: randomSecret().slice(0, 32) })}>
-                  <RefreshCw size={16} /> 生成 Secret
-                </button>
+                {webhook.kind !== "wechat" && (
+                  <button className="secondary" onClick={() => patchWebhook(index, { secret: randomSecret().slice(0, 32) })}>
+                    <RefreshCw size={16} /> 生成 Secret
+                  </button>
+                )}
+                {webhook.kind === "wechat" && (
+                  <>
+                    <button className="secondary" disabled={busyId === webhook.id} onClick={() => startWeixinLogin(webhook.id)}>
+                      <QrCode size={16} /> {webhook.weixin_bot_token ? "重新扫码" : "扫码登录"}
+                    </button>
+                    {webhook.weixin_qrcode_url && !webhook.weixin_bot_token && (
+                      <button className="secondary" disabled={busyId === webhook.id} onClick={() => refreshWeixinStatus(webhook.id)}>
+                        <RefreshCw size={16} /> 刷新状态
+                      </button>
+                    )}
+                    {webhook.weixin_bot_token && (
+                      <button className="secondary" disabled={busyId === webhook.id} onClick={() => logoutWeixin(webhook.id)}>
+                        <LogOut size={16} /> 退出登录
+                      </button>
+                    )}
+                  </>
+                )}
                 <button className="secondary" onClick={() => setDrafts((current) => current.filter((item) => item.id !== webhook.id))}>
                   <Trash2 size={16} /> 移除
                 </button>
@@ -1231,9 +2021,18 @@ function WebhookView({
         })}
         {drafts.length === 0 && <Blank text="点击左上角或左下角的加号新增 webhook" />}
       </div>
-      {copyStatus && <div className="inlineStatus">{copyStatus}</div>}
     </section>
   );
+}
+
+function weixinStatusLabel(webhook: WebhookConfig) {
+  if (webhook.weixin_bot_token) return "已登录";
+  const status = (webhook.weixin_status ?? "").toLowerCase();
+  if (status === "scaned" || status === "scanned") return "待确认";
+  if (status === "wait" || status === "waiting") return "待扫码";
+  if (status === "expired") return "已过期";
+  if (status === "logged_out") return "未登录";
+  return status || "未登录";
 }
 
 function AdminView({
@@ -1476,7 +2275,7 @@ function AdminView({
         </div>
         <div className="userTable">
           {users.map((profile) => (
-            <AdminUserRow key={profile.email} profile={profile} token={token} afterChange={() => refreshAdmin(token, () => {}, setUsers, setSettings)} />
+            <AdminUserRow key={`${profile.provider}:${profile.email}`} profile={profile} token={token} afterChange={() => refreshAdmin(token, () => {}, setUsers, setSettings)} />
           ))}
         </div>
       </section>
@@ -1488,6 +2287,7 @@ function AdminUserRow({ profile, token, afterChange }: { profile: UserProfile; t
   const [banUntil, setBanUntil] = useState("");
   const [editProfile, setEditProfile] = useState(profile.profile);
   const [editTags, setEditTags] = useState(profile.tags.join(" "));
+  const isAdmin = profile.provider === "password";
 
   async function patch(body: unknown) {
     await fetch(apiPath(`/api/admin/users/${encodeURIComponent(profile.email)}`), {
@@ -1531,21 +2331,21 @@ function AdminUserRow({ profile, token, afterChange }: { profile: UserProfile; t
       <div className="rowActions">
         <label className="banUntil">
           <span>{t("banUntil")}</span>
-          <input type="datetime-local" value={banUntil} onChange={(event) => setBanUntil(event.target.value)} />
+          <input type="datetime-local" value={banUntil} onChange={(event) => setBanUntil(event.target.value)} disabled={isAdmin} />
         </label>
-        <button className="secondary" onClick={applyCustomBan} disabled={!banUntil}>
+        <button className="secondary" onClick={applyCustomBan} disabled={!banUntil || isAdmin}>
           <Ban size={16} /> {t("set")}
         </button>
-        <button className="secondary" onClick={() => patch({ ban_expires_at: Math.floor(Date.now() / 1000) + 3600 })}>
+        <button className="secondary" onClick={() => patch({ ban_expires_at: Math.floor(Date.now() / 1000) + 3600 })} disabled={isAdmin}>
           <Ban size={16} /> 1h
         </button>
-        <button className="secondary" onClick={() => patch({ ban_expires_at: Math.floor(Date.now() / 1000) + 86400 })}>
+        <button className="secondary" onClick={() => patch({ ban_expires_at: Math.floor(Date.now() / 1000) + 86400 })} disabled={isAdmin}>
           <Ban size={16} /> 24h
         </button>
-        <button className="secondary" onClick={() => patch({ ban_expires_at: null })}>
+        <button className="secondary" onClick={() => patch({ ban_expires_at: null })} disabled={isAdmin}>
           <Check size={16} /> {t("unban")}
         </button>
-        <button className="secondary" onClick={kick}>
+        <button className="secondary" onClick={kick} disabled={isAdmin}>
           <LogOut size={16} /> {t("kick")}
         </button>
       </div>
@@ -1662,6 +2462,7 @@ function AccountView({
       {notice && <div className="notice">{notice}</div>}
       <PersonalizationPanel user={user} preferences={preferences} setPreferences={setPreferences} />
       <ProfilePanel token={token} />
+      <PasskeyPanel token={token} />
     </section>
   );
 }
@@ -1758,6 +2559,9 @@ function PersonalizationPanel({
 function ProfilePanel({ token }: { token: string }) {
   const [profile, setProfile] = useState(profileTemplate);
   const [tags, setTags] = useState("");
+  const [introCode, setIntroCode] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
+  const [onboardingCompleted, setOnboardingCompleted] = useState(true);
   const [status, setStatus] = useState("");
 
   useEffect(() => {
@@ -1767,6 +2571,9 @@ function ProfilePanel({ token }: { token: string }) {
         if (!data) return;
         setProfile(data.profile || profileTemplate);
         setTags(data.tags.join(" "));
+        setIntroCode(data.friend_code ?? data.intro_code ?? "");
+        setIsPublic(Boolean(data.is_public));
+        setOnboardingCompleted(Boolean(data.onboarding_completed));
       })
       .catch(() => {});
   }, [token]);
@@ -1777,7 +2584,12 @@ function ProfilePanel({ token }: { token: string }) {
     const response = await fetch(apiPath("/api/me/profile"), {
       method: "POST",
       headers: { ...authHeaders(token), "content-type": "application/json" },
-      body: JSON.stringify({ profile, tags: splitTags(tags) })
+      body: JSON.stringify({
+        profile,
+        tags: splitTags(tags),
+        is_public: isPublic,
+        onboarding_completed: true
+      })
     });
     if (!response.ok) {
       setStatus((await safeError(response)) || t("saveProfileFailed"));
@@ -1787,6 +2599,9 @@ function ProfilePanel({ token }: { token: string }) {
     if (data) {
       setProfile(data.profile || profileTemplate);
       setTags(data.tags.join(" "));
+      setIntroCode(data.friend_code ?? data.intro_code ?? "");
+      setIsPublic(Boolean(data.is_public));
+      setOnboardingCompleted(Boolean(data.onboarding_completed));
     }
     setStatus(t("profileSaved"));
   }
@@ -1803,6 +2618,23 @@ function ProfilePanel({ token }: { token: string }) {
         </div>
       </div>
       <form className="profileForm" onSubmit={save}>
+        {!onboardingCompleted && (
+          <section className="onboardingBox">
+            <strong>{t("onboardingTitle")}</strong>
+            <p>{t("onboardingHelp")}</p>
+          </section>
+        )}
+        <label>
+          <span>{t("introCode")}</span>
+          <input value={introCode} readOnly onFocus={(event) => event.currentTarget.select()} />
+        </label>
+        <label className="toggleRow profileToggle">
+          <span>
+            {t("publicUser")}
+            <small>{t("privateUserHelp")}</small>
+          </span>
+          <input type="checkbox" checked={isPublic} onChange={(event) => setIsPublic(event.target.checked)} />
+        </label>
         <label>
           <span>{t("profile")}</span>
           <textarea value={profile} onChange={(event) => setProfile(event.target.value)} placeholder={profileTemplate} />
@@ -1825,8 +2657,148 @@ function ProfilePanel({ token }: { token: string }) {
   );
 }
 
-function UserCard({ profile }: { profile: UserProfile }) {
+function PasskeyPanel({ token }: { token: string }) {
+  const [passkeys, setPasskeys] = useState<PasskeyInfo[]>([]);
+  const [name, setName] = useState("");
+  const [status, setStatus] = useState("");
+  const [busy, setBusy] = useState(false);
+  const supported = passkeysSupported();
+
+  useEffect(() => {
+    void refreshPasskeys();
+  }, [token]);
+
+  async function refreshPasskeys() {
+    const response = await fetch(apiPath("/api/passkeys"), { headers: authHeaders(token) });
+    const data = await safeJson<PasskeyInfo[]>(response);
+    setPasskeys(data ?? []);
+  }
+
+  async function addPasskey() {
+    setStatus("");
+    if (!supported) {
+      setStatus(t("passkeyUnsupported"));
+      return;
+    }
+    setBusy(true);
+    try {
+      const start = await fetch(apiPath("/api/passkeys/register/start"), {
+        method: "POST",
+        headers: authHeaders(token)
+      });
+      if (!start.ok) {
+        setStatus((await safeError(start)) || t("passkeyRegisterFailed"));
+        return;
+      }
+      const challenge = (await start.json()) as PasskeyRegistrationStart;
+      const credential = (await navigator.credentials.create(decodeCredentialCreationOptions(challenge.options))) as PublicKeyCredential | null;
+      if (!credential) {
+        setStatus(t("passkeyRegisterFailed"));
+        return;
+      }
+      const finish = await fetch(apiPath("/api/passkeys/register/finish"), {
+        method: "POST",
+        headers: { ...authHeaders(token), "content-type": "application/json" },
+        body: JSON.stringify({
+          registration_id: challenge.registration_id,
+          name: name.trim() || undefined,
+          credential: publicKeyCredentialToJson(credential)
+        })
+      });
+      if (!finish.ok) {
+        setStatus((await safeError(finish)) || t("passkeyRegisterFailed"));
+        return;
+      }
+      setPasskeys((await safeJson<PasskeyInfo[]>(finish)) ?? []);
+      setName("");
+      setStatus(t("passkeyAdded"));
+    } catch {
+      setStatus(t("passkeyRegisterFailed"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removePasskey(id: string) {
+    setBusy(true);
+    try {
+      const response = await fetch(apiPath(`/api/passkeys/${encodeURIComponent(id)}/delete`), {
+        method: "POST",
+        headers: authHeaders(token)
+      });
+      if (!response.ok) {
+        setStatus((await safeError(response)) || t("saveFailed"));
+        return;
+      }
+      setPasskeys((await safeJson<PasskeyInfo[]>(response)) ?? []);
+      setStatus(t("passkeyRemoved"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="panel passkeyPanel">
+      <div className="panelHead">
+        <div className="panelTitle">
+          <KeyRound size={18} />
+          <div>
+            <h3>{t("passkeys")}</h3>
+            <p>{t("passkeyHelp")}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="passkeyAddRow">
+        <label>
+          <span>{t("passkeyName")}</span>
+          <input value={name} onChange={(event) => setName(event.target.value)} placeholder="MacBook Touch ID" />
+        </label>
+        <button className="primary" onClick={addPasskey} disabled={busy || !supported}>
+          <KeyRound size={17} /> {t("addPasskey")}
+        </button>
+      </div>
+
+      {!supported && <div className="notice warning">{t("passkeyUnsupported")}</div>}
+      {status && <div className={status.endsWith(".") || status.endsWith("。") ? "notice" : "notice warning"}>{status}</div>}
+
+      <div className="passkeyList">
+        {passkeys.map((passkey) => (
+          <article className="passkeyItem" key={passkey.id}>
+            <KeyRound size={17} />
+            <div>
+              <strong>{passkey.name}</strong>
+              <small>
+                {formatTime(passkey.created_at)}
+                {passkey.last_used_at ? ` · ${formatTime(passkey.last_used_at)}` : ""}
+              </small>
+            </div>
+            <button className="secondary small" onClick={() => removePasskey(passkey.id)} disabled={busy}>
+              <Trash2 size={15} /> {t("removePasskey")}
+            </button>
+          </article>
+        ))}
+        {passkeys.length === 0 && <div className="empty compactEmpty">{t("noPasskeys")}</div>}
+      </div>
+    </section>
+  );
+}
+
+function UserCard({
+  profile,
+  currentUser,
+  onAdd,
+  onAccept,
+  onRemove
+}: {
+  profile: UserProfile;
+  currentUser?: string;
+  onAdd?: (email: string) => void;
+  onAccept?: (email: string) => void;
+  onRemove?: (email: string) => void;
+}) {
   const banned = profile.ban_expires_at && profile.ban_expires_at > Math.floor(Date.now() / 1000);
+  const isSelf = currentUser ? profile.email.toLowerCase() === currentUser.toLowerCase() : false;
   return (
     <article className="userCard">
       <div className="avatarCircle">{initials(profile.email)}</div>
@@ -1836,9 +2808,36 @@ function UserCard({ profile }: { profile: UserProfile }) {
         <div className="metaRow">
           <span className={profile.online ? "status onlineStatus" : "status"}>{profile.online ? t("onlineStatus") : t("offlineStatus")}</span>
           <span>{profile.provider}</span>
+          {profile.is_public && <span>{currentLanguage() === "zh" ? "公开" : "Public"}</span>}
           {banned && <span className="dangerText">banned until {formatTime(profile.ban_expires_at!)}</span>}
         </div>
+        {(profile.friend_code ?? profile.intro_code) && (
+          <div className="introCodeLine">
+            <span>{t("introCode")}</span>
+            <code>{profile.friend_code ?? profile.intro_code}</code>
+          </div>
+        )}
         <div className="tagRow">{profile.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
+        {!isSelf && (onAdd || onAccept || onRemove) && (
+          <div className="userCardActions">
+            {profile.is_friend && onRemove && (
+              <button className="secondary small" onClick={() => onRemove(profile.email)}>
+                <Trash2 size={15} /> {t("removeFriend")}
+              </button>
+            )}
+            {profile.friend_request_received && onAccept && (
+              <button className="secondary small" onClick={() => onAccept(profile.email)}>
+                <Check size={15} /> {t("acceptFriend")}
+              </button>
+            )}
+            {profile.friend_request_sent && <span className="statusPill">{t("friendPending")}</span>}
+            {!profile.is_friend && !profile.friend_request_received && !profile.friend_request_sent && profile.is_public && onAdd && (
+              <button className="secondary small" onClick={() => onAdd(profile.email)}>
+                <UserPlus size={15} /> {t("addFriend")}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </article>
   );
@@ -1854,14 +2853,42 @@ function Blank({ text = "Waiting for agent requests" }: { text?: string }) {
 }
 
 function TaskIcon({ kind }: { kind: TaskKind }) {
+  if (kind === "judgment") return <Check size={18} />;
   if (kind === "steps") return <ListChecks size={18} />;
   return <MessageSquareText size={18} />;
+}
+
+function defaultRequestAnswer(request: HumanRequest) {
+  if (request.kind === "judgment") return "yes";
+  return request.choices[0] ?? "";
 }
 
 function Countdown({ request, now }: { request: HumanRequest; now: number }) {
   const remaining = Math.max(0, request.expires_at - now);
   if (remaining === 0) return <span className="countdown expired">expired</span>;
   return <span className={remaining <= 30 ? "countdown urgent" : "countdown"}>{formatDuration(remaining)}</span>;
+}
+
+function taskStatusLabel(status: AgentTaskStatus) {
+  const zh: Record<AgentTaskStatus, string> = {
+    open: "待处理",
+    in_progress: "处理中",
+    done: "已完成",
+    archived: "已归档"
+  };
+  const en: Record<AgentTaskStatus, string> = {
+    open: "Open",
+    in_progress: "In progress",
+    done: "Done",
+    archived: "Archived"
+  };
+  return (currentLanguage() === "en" ? en : zh)[status];
+}
+
+function taskFilterLabel(filter: TaskFilter) {
+  if (filter === "active") return currentLanguage() === "zh" ? "进行中" : "Active";
+  if (filter === "all") return currentLanguage() === "zh" ? "全部" : "All";
+  return taskStatusLabel(filter);
 }
 
 function useNow() {
@@ -1896,10 +2923,108 @@ function authHeaders(token: string) {
   return { authorization: `Bearer ${token}` };
 }
 
+function passkeysSupported() {
+  return typeof window !== "undefined" && "PublicKeyCredential" in window && Boolean(navigator.credentials);
+}
+
+function decodeCredentialCreationOptions(options: PublicKeyCredentialCreationOptionsJSON): CredentialCreationOptions {
+  return {
+    publicKey: {
+      ...options,
+      challenge: base64UrlToBuffer(options.challenge),
+      user: {
+        ...options.user,
+        id: base64UrlToBuffer(options.user.id)
+      },
+      excludeCredentials: options.excludeCredentials?.map(decodeCredentialDescriptor)
+    }
+  };
+}
+
+function decodeCredentialRequestOptions(options: PublicKeyCredentialRequestOptionsJSON): CredentialRequestOptions {
+  return {
+    publicKey: {
+      ...options,
+      challenge: base64UrlToBuffer(options.challenge),
+      allowCredentials: options.allowCredentials?.map(decodeCredentialDescriptor)
+    }
+  };
+}
+
+function decodeCredentialDescriptor(descriptor: PublicKeyCredentialDescriptorJSON): PublicKeyCredentialDescriptor {
+  return {
+    ...descriptor,
+    id: base64UrlToBuffer(descriptor.id)
+  };
+}
+
+function publicKeyCredentialToJson(credential: PublicKeyCredential) {
+  const base = {
+    id: credential.id,
+    rawId: bufferToBase64Url(credential.rawId),
+    type: credential.type,
+    extensions: credential.getClientExtensionResults()
+  };
+  const response = credential.response;
+  if ("attestationObject" in response) {
+    const attestation = response as AuthenticatorAttestationResponse & { getTransports?: () => AuthenticatorTransport[] };
+    return {
+      ...base,
+      response: {
+        attestationObject: bufferToBase64Url(attestation.attestationObject),
+        clientDataJSON: bufferToBase64Url(attestation.clientDataJSON),
+        transports: attestation.getTransports?.()
+      }
+    };
+  }
+  const assertion = response as AuthenticatorAssertionResponse;
+  return {
+    ...base,
+    response: {
+      authenticatorData: bufferToBase64Url(assertion.authenticatorData),
+      clientDataJSON: bufferToBase64Url(assertion.clientDataJSON),
+      signature: bufferToBase64Url(assertion.signature),
+      userHandle: assertion.userHandle ? bufferToBase64Url(assertion.userHandle) : null
+    }
+  };
+}
+
+function base64UrlToBuffer(value: string): ArrayBuffer {
+  const padding = "=".repeat((4 - (value.length % 4)) % 4);
+  const base64 = `${value}${padding}`.replace(/-/g, "+").replace(/_/g, "/");
+  const raw = window.atob(base64);
+  const bytes = new Uint8Array(raw.length);
+  for (let index = 0; index < raw.length; index += 1) {
+    bytes[index] = raw.charCodeAt(index);
+  }
+  return bytes.buffer as ArrayBuffer;
+}
+
+function bufferToBase64Url(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let raw = "";
+  for (const byte of bytes) {
+    raw += String.fromCharCode(byte);
+  }
+  return window.btoa(raw).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
 async function refreshRequests(token: string, setRequests: (requests: HumanRequest[]) => void) {
   const response = await fetch(apiPath("/api/requests"), { headers: authHeaders(token) });
   const data = await safeJson<HumanRequest[]>(response);
   if (data) setRequests(sortRequests(data));
+}
+
+async function refreshTasks(token: string, setTasks: (tasks: AgentTask[]) => void) {
+  const response = await fetch(apiPath("/api/tasks?include_archived=true"), { headers: authHeaders(token) });
+  const data = await safeJson<AgentTask[]>(response);
+  setTasks(data ? sortAgentTasks(data) : []);
+}
+
+async function refreshSent(token: string, setSent: (sent: AnsweredRequest[]) => void) {
+  const response = await fetch(apiPath("/api/sent"), { headers: authHeaders(token) });
+  const data = await safeJson<AnsweredRequest[]>(response);
+  setSent(data ? sortAnswered(data) : []);
 }
 
 async function refreshTrash(token: string, setTrash: (trash: ExpiredRequest[]) => void) {
@@ -1969,12 +3094,46 @@ function sortRequests(requests: HumanRequest[]) {
   return [...requests].sort((a, b) => a.expires_at - b.expires_at);
 }
 
+function sortAgentTasks(tasks: AgentTask[]) {
+  const rank: Record<AgentTaskStatus, number> = {
+    in_progress: 0,
+    open: 1,
+    done: 2,
+    archived: 3
+  };
+  return [...tasks].sort((a, b) => {
+    const byStatus = rank[a.status] - rank[b.status];
+    if (byStatus !== 0) return byStatus;
+    return b.updated_at - a.updated_at;
+  });
+}
+
+function upsertAgentTask(current: AgentTask[], next: AgentTask) {
+  const without = current.filter((task) => task.id !== next.id);
+  return sortAgentTasks([next, ...without]);
+}
+
+function sortAnswered(sent: AnsweredRequest[]) {
+  return [...sent].sort((a, b) => b.answer.answered_at - a.answer.answered_at);
+}
+
+function upsertAnswered(current: AnsweredRequest[], next: AnsweredRequest) {
+  const without = current.filter((entry) => entry.request.id !== next.request.id);
+  return sortAnswered([next, ...without]);
+}
+
 function sortTrash(trash: ExpiredRequest[]) {
   return [...trash].sort((a, b) => b.expired_at - a.expired_at);
 }
 
 function splitTags(value: string) {
-  return value.split(/\s+/).filter(Boolean);
+  return value
+    .split(/\s+/)
+    .map((tag) => tag.trim().replace(/^[,;]+|[,;]+$/g, ""))
+    .filter(Boolean)
+    .map((tag) => (tag.startsWith("#") ? tag : `#${tag}`))
+    .map((tag) => tag.toLowerCase())
+    .filter((tag) => tag.length > 1 && !reservedTags.has(tag));
 }
 
 function initials(email: string) {
@@ -2008,15 +3167,11 @@ function normalizeMcpUrl(value: string) {
 }
 
 function agentInstallPrompt(mcpUrl: string, accessKey: string) {
-  const headerJson = accessKey
-    ? `,
+  const headerJson = `,
       "headers": {
         "x-humen-agent-secret": "${accessKey}"
-      }`
-    : "";
-  const secretLine = accessKey
-    ? "需要带请求头：" + "x-humen-agent-secret" + ": " + accessKey
-    : "当前不需要 Agent Secret。";
+      }`;
+  const secretLine = "必须带请求头：" + "x-humen-agent-secret" + ": " + accessKey;
   return `请帮我把 humen-mcp 配置成一个 remote/http MCP server。
 
 请先判断你当前使用的是哪种 Agent 工具或客户端，并使用它自带的 MCP 添加方式：
@@ -2041,7 +3196,7 @@ ${secretLine}
   }
 }
 
-配置后请重启/刷新 MCP 连接，并执行 tools/list 验证能看到 ask_humen、list_online_humens、search_humen_profiles、list_humen_tags。`;
+配置后请重启/刷新 MCP 连接，并执行 tools/list 验证能看到 ask_humen、ask_humen_async、ask_humen_text_async、ask_humen_choice_async、ask_humen_judgment_async、read_humen_replies、create_humen_task、list_humen_tasks、list_online_humens、search_humen_profiles、list_humen_tags。`;
 }
 
 async function copyToClipboard(text: string, setStatus: (status: string) => void) {
@@ -2070,12 +3225,6 @@ function oauthProviderLabel(provider: string) {
 
 function oauthStartUrl(provider: string) {
   return apiPath(`/api/auth/oauth/${normalizeOAuthProvider(provider)}/start`);
-}
-
-function clawbotIncomingUrl(id: string, secret: string) {
-  const url = new URL(apiPath(`/api/integrations/wechat/clawbot/${id}`), window.location.href);
-  if (secret.trim()) url.searchParams.set("secret", secret.trim());
-  return url.toString();
 }
 
 function oauthCallbackUrl(provider: string) {
@@ -2125,12 +3274,16 @@ function logout(
   setToken: (token: string) => void,
   setUser: (user: User | null) => void,
   setRequests: (requests: HumanRequest[]) => void,
+  setTasks: (tasks: AgentTask[]) => void,
+  setSent: (sent: AnsweredRequest[]) => void,
   setTrash: (trash: ExpiredRequest[]) => void
 ) {
   localStorage.removeItem(tokenKey);
   setToken("");
   setUser(null);
   setRequests([]);
+  setTasks([]);
+  setSent([]);
   setTrash([]);
 }
 
