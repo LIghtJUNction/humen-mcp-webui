@@ -1,5 +1,7 @@
 import React, { FormEvent, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { MantineProvider, createTheme } from "@mantine/core";
+import "@mantine/core/styles.css";
 import {
   Ban,
   Check,
@@ -94,6 +96,15 @@ type User = {
   provider: "password" | "github" | "passkey";
 };
 
+type ReputationBreakdown = {
+  seed_source?: string | null;
+  seed_score?: number | null;
+  seed_weight?: number;
+  feedback_weight?: number;
+  total_weight?: number;
+  confidence?: number;
+};
+
 type UserProfile = {
   email: string;
   provider: "password" | "github" | "passkey";
@@ -101,6 +112,7 @@ type UserProfile = {
   tags: string[];
   reputation: number;
   ratings_count: number;
+  reputation_breakdown?: ReputationBreakdown | null;
   friend_code?: string;
   intro_code: string;
   is_public: boolean;
@@ -131,6 +143,7 @@ type HumanLeaderboardEntry = {
   latest_answered_at?: number | null;
   reputation: number;
   ratings_count: number;
+  reputation_breakdown?: ReputationBreakdown | null;
   profile: string;
   tags: string[];
   online: boolean;
@@ -227,6 +240,8 @@ type AgentDirectoryVisibility = "public_users" | "reputation_at_least" | "self_a
 type AdminSettings = {
   allow_registration: boolean;
   oauth_channels: OAuthChannelConfig[];
+  github_api_token?: string | null;
+  github_api_token_configured?: boolean;
   agent_secret_prefix?: string | null;
   allow_agent_directory?: boolean;
   agent_directory_visibility?: AgentDirectoryVisibility;
@@ -288,6 +303,16 @@ const defaultPreferences: Preferences = {
   language: "zh",
   compact: false
 };
+
+const theme = createTheme({
+  primaryColor: "teal",
+  defaultRadius: "md",
+  fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  headings: {
+    fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    fontWeight: "800"
+  }
+});
 
 const profileTemplateEn = `Hi, I can help with human-in-the-loop checks.
 
@@ -384,6 +409,31 @@ const zhText: Record<string, string> = {
   email: "邮箱",
   password: "密码",
   adminSignIn: "管理员登录",
+  adminAccess: "管理员入口",
+  hideAdminAccess: "收起管理员入口",
+  adminAccessHelp: "账号密码仅供管理员初始化和维护。普通用户请使用管理员配置的 OAuth 登录。",
+  loginWithOAuth: "使用 OAuth 登录",
+  oauthUnavailable: "OAuth 登录尚未开通，请联系管理员开通账号。",
+  passkeyAccess: "已绑定 Passkey？",
+  loginHeroTitle: "Agent 请求进入 MCP，人类给出可审计回复",
+  loginHeroSubtitle: "humen-mcp 把 Codex、Claude Code 等 Agent 的阻塞问题路由给在线用户，回答后再让 Agent 继续执行。",
+  loginFlowAgent: "Agent 请求",
+  loginFlowAgentHelp: "需要判断、审批或简短文本",
+  loginFlowMcp: "ask_humen",
+  loginFlowMcpHelp: "通过 /mcp 创建待处理请求",
+  loginFlowHuman: "人类处理",
+  loginFlowHumanHelp: "按标签、好友和可见范围分派",
+  loginFlowAnswer: "返回答案",
+  loginFlowAnswerHelp: "带备注和时间写回 Agent",
+  loginPreviewPending: "待处理请求",
+  loginPreviewAnswered: "已返回回复",
+  loginPreviewKind: "类型",
+  loginPreviewRoute: "路由",
+  loginPreviewTimeout: "超时",
+  loginPreviewDecision: "结论",
+  loginPreviewAudit: "审计",
+  loginPreviewPrompt: "审批登录权限变更后再继续",
+  loginPreviewReply: "continue_agent() 收到 answer + note",
   adminLoginFailed: "管理员登录失败",
   passkeySignIn: "使用 Passkey 登录",
   passkeyUseEmail: "请先输入邮箱，再使用 Passkey 登录。",
@@ -437,6 +487,12 @@ const zhText: Record<string, string> = {
   latestAnswered: "最近处理",
   reputation: "信誉",
   ratingsCount: "评分数",
+  reputationEvidence: "证据权重",
+  reputationConfidence: "置信度",
+  reputationSeed: "初始来源",
+  reputationSeedGithub: "GitHub 种子",
+  reputationSeedNone: "未初始化",
+  reputationWeightedHelp: "GitHub 初始信誉 + 按评分者信誉加权的反馈",
   rateHuman: "评分",
   reportHuman: "举报",
   reportReason: "举报原因",
@@ -481,6 +537,12 @@ const zhText: Record<string, string> = {
   saveProfileFailed: "保存简介失败",
   registration: "注册",
   allowNewUsers: "允许新用户注册",
+  githubApiToken: "GitHub API Token",
+  githubApiTokenHelp: "用于 GitHub 信誉初始化画像抓取，提高 API 额度；明文不会回显。",
+  githubApiTokenPlaceholder: "粘贴 fine-grained 或 classic token",
+  githubApiTokenConfigured: "Token 已配置",
+  githubApiTokenMissing: "Token 未配置",
+  clearToken: "清空 token",
   oauthChannels: "OAuth 渠道",
   oauthHelp: "通用 OAuth 渠道。把回调 URL 填到对应 OAuth App 的 Callback/Redirect URI。",
   callbackExample: "回调 URL 示例：",
@@ -559,6 +621,31 @@ const enText: Record<string, string> = {
   email: "Email",
   password: "Password",
   adminSignIn: "Admin sign in",
+  adminAccess: "Admin access",
+  hideAdminAccess: "Hide admin access",
+  adminAccessHelp: "Email/password sign-in is only for administrator setup and maintenance. Regular users should use administrator-configured OAuth.",
+  loginWithOAuth: "Sign in with OAuth",
+  oauthUnavailable: "OAuth sign-in is not configured yet. Ask an administrator to enable your account.",
+  passkeyAccess: "Already have a passkey?",
+  loginHeroTitle: "Agent requests enter MCP. Humans return auditable replies.",
+  loginHeroSubtitle: "humen-mcp routes blocking questions from Codex, Claude Code, and other agents to online humans, then resumes the agent with a recorded answer.",
+  loginFlowAgent: "Agent request",
+  loginFlowAgentHelp: "Judgment, approval, or short text",
+  loginFlowMcp: "ask_humen",
+  loginFlowMcpHelp: "Creates a pending request through /mcp",
+  loginFlowHuman: "Human review",
+  loginFlowHumanHelp: "Routed by tags, friends, and visibility",
+  loginFlowAnswer: "Answer returned",
+  loginFlowAnswerHelp: "Note and timestamp go back to the agent",
+  loginPreviewPending: "Pending request",
+  loginPreviewAnswered: "Returned reply",
+  loginPreviewKind: "Kind",
+  loginPreviewRoute: "Route",
+  loginPreviewTimeout: "Timeout",
+  loginPreviewDecision: "Decision",
+  loginPreviewAudit: "Audit",
+  loginPreviewPrompt: "Review login access change before continuing",
+  loginPreviewReply: "continue_agent() receives answer + note",
   adminLoginFailed: "Admin login failed",
   passkeySignIn: "Sign in with Passkey",
   passkeyUseEmail: "Enter your email before signing in with a passkey.",
@@ -612,6 +699,12 @@ const enText: Record<string, string> = {
   latestAnswered: "Latest answer",
   reputation: "Reputation",
   ratingsCount: "Ratings",
+  reputationEvidence: "Evidence weight",
+  reputationConfidence: "Confidence",
+  reputationSeed: "Seed",
+  reputationSeedGithub: "GitHub seed",
+  reputationSeedNone: "No seed",
+  reputationWeightedHelp: "GitHub seed plus feedback weighted by rater reputation",
   rateHuman: "Rate",
   reportHuman: "Report",
   reportReason: "Report reason",
@@ -656,6 +749,12 @@ const enText: Record<string, string> = {
   saveProfileFailed: "Save profile failed",
   registration: "Registration",
   allowNewUsers: "Allow new users",
+  githubApiToken: "GitHub API Token",
+  githubApiTokenHelp: "Used for GitHub reputation seeding metadata and higher API quota. The plaintext token is not returned.",
+  githubApiTokenPlaceholder: "Paste a fine-grained or classic token",
+  githubApiTokenConfigured: "Token configured",
+  githubApiTokenMissing: "Token not configured",
+  clearToken: "Clear token",
   oauthChannels: "OAuth Channels",
   oauthHelp: "Generic OAuth channels. Put the callback URL into the provider's Callback/Redirect URI.",
   callbackExample: "Callback URL example:",
@@ -832,9 +931,13 @@ function initialView(): View {
   return value && appViews.has(value as View) ? (value as View) : "inbox";
 }
 
-function App() {
+type AppProps = {
+  preferences: Preferences;
+  setPreferences: (preferences: Preferences) => void;
+};
+
+function App({ preferences, setPreferences }: AppProps) {
   const [token, setToken] = useState(() => localStorage.getItem(tokenKey) ?? "");
-  const [preferences, setPreferences] = usePreferences();
   const [user, setUser] = useState<User | null>(null);
   const [view, setView] = useState<View>(initialView);
   const [requests, setRequests] = useState<HumanRequest[]>([]);
@@ -854,12 +957,6 @@ function App() {
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const now = useNow();
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = preferences.theme;
-    document.documentElement.dataset.compact = preferences.compact ? "true" : "false";
-    document.documentElement.lang = preferences.language;
-  }, [preferences.theme, preferences.compact, preferences.language]);
 
   const selected = useMemo(
     () => requests.find((request) => request.id === selectedId) ?? requests[0] ?? null,
@@ -1133,13 +1230,19 @@ function Login({ onToken }: { onToken: (token: string) => void }) {
   const [pass, setPass] = useState("");
   const [error, setError] = useState("");
   const [passkeyBusy, setPasskeyBusy] = useState(false);
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [authConfig, setAuthConfig] = useState<AuthConfig>({ github_enabled: false, allow_registration: true });
+  const [publicLeaderboard, setPublicLeaderboard] = useState<HumanLeaderboardEntry[]>([]);
 
   useEffect(() => {
     fetch(apiPath("/api/auth/config"))
       .then((response) => safeJson<AuthConfig>(response))
       .then((config) => setAuthConfig(config ?? { github_enabled: false, allow_registration: false, oauth_channels: [] }))
       .catch(() => setAuthConfig({ github_enabled: false, allow_registration: false, oauth_channels: [] }));
+    fetch(apiPath("/api/public/leaderboard"))
+      .then((response) => safeJson<HumanLeaderboardEntry[]>(response))
+      .then((entries) => setPublicLeaderboard(entries ?? []))
+      .catch(() => setPublicLeaderboard([]));
   }, []);
 
   async function submit(event: FormEvent) {
@@ -1208,32 +1311,483 @@ function Login({ onToken }: { onToken: (token: string) => void }) {
     }
   }
 
+  const oauthEnabled = authConfig.github_enabled || (authConfig.oauth_channels ?? []).some((channel) => channel.enabled);
+
   return (
     <main className="loginShell">
-      <form className="loginPanel" onSubmit={submit}>
-        <div className="loginHead">
-          <BrandLockup />
-          <SourceLink />
-        </div>
-        <label>
-          Email
-          <input value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" />
-        </label>
-        <label>
-          Password
-          <input value={pass} onChange={(event) => setPass(event.target.value)} type="password" autoComplete="current-password" />
-        </label>
-        {error && <p className="error">{error}</p>}
-        <button className="primary" type="submit">
-          <Check size={18} /> {t("adminSignIn")}
-        </button>
-        <button className="secondary" type="button" onClick={signInWithPasskey} disabled={passkeyBusy || authConfig.passkey_enabled === false}>
-          <KeyRound size={18} /> {t("passkeySignIn")}
-        </button>
-        <OAuthLoginButtons config={authConfig} />
-      </form>
+      <header className="loginNav">
+        <BrandLockup />
+        <SourceLink />
+      </header>
+      <section className="loginHeroLayout">
+        <section className="loginHeroCopy">
+          <span className="loginEyebrow">humen-mcp / ask_humen</span>
+          <h2>{t("loginHeroTitle")}</h2>
+          <p>{t("loginHeroSubtitle")}</p>
+        </section>
+
+        <section className="loginPanel">
+          <div className="loginPrimaryAuth">
+            <span>{t("loginWithOAuth")}</span>
+            {oauthEnabled ? <OAuthLoginButtons config={authConfig} /> : <p className="loginNotice">{t("oauthUnavailable")}</p>}
+          </div>
+
+          {authConfig.passkey_enabled !== false && (
+            <div className="passkeyLogin">
+              <label>
+                {t("passkeyAccess")}
+                <input value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder={t("email")} />
+              </label>
+              <button className="secondary" type="button" onClick={signInWithPasskey} disabled={passkeyBusy}>
+                <KeyRound size={18} /> {t("passkeySignIn")}
+              </button>
+            </div>
+          )}
+
+          {error && <p className="error">{error}</p>}
+
+          <button className="adminLoginToggle" type="button" onClick={() => setShowAdminLogin((value) => !value)}>
+            <Shield size={15} /> {showAdminLogin ? t("hideAdminAccess") : t("adminAccess")}
+          </button>
+
+          {showAdminLogin && (
+            <form className="adminLoginForm" onSubmit={submit}>
+              <p>{t("adminAccessHelp")}</p>
+              <label>
+                {t("email")}
+                <input value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" />
+              </label>
+              <label>
+                {t("password")}
+                <input value={pass} onChange={(event) => setPass(event.target.value)} type="password" autoComplete="current-password" />
+              </label>
+              <button className="primary" type="submit">
+                <Check size={18} /> {t("adminSignIn")}
+              </button>
+            </form>
+          )}
+        </section>
+
+        <LoginFlowStage />
+      </section>
+      <LoginPublicSections leaderboard={publicLeaderboard} />
     </main>
   );
+}
+
+function LoginFlowStage() {
+  const flowSteps = [
+    {
+      icon: <Send size={20} />,
+      label: t("loginFlowAgent"),
+      meta: "request.kind",
+      help: t("loginFlowAgentHelp")
+    },
+    {
+      icon: <Webhook size={20} />,
+      label: t("loginFlowMcp"),
+      meta: "/mcp",
+      help: t("loginFlowMcpHelp")
+    },
+    {
+      icon: <Users size={20} />,
+      label: t("loginFlowHuman"),
+      meta: "tags[]",
+      help: t("loginFlowHumanHelp")
+    },
+    {
+      icon: <MessageSquareText size={20} />,
+      label: t("loginFlowAnswer"),
+      meta: "answer.note",
+      help: t("loginFlowAnswerHelp")
+    }
+  ];
+
+  return (
+    <section className="loginFlowStage" aria-label="humen-mcp request flow">
+      <div className="handoffRail">
+        {flowSteps.map((step) => (
+          <article className="handoffStep" key={step.label}>
+            <span className="handoffIcon">{step.icon}</span>
+            <span>
+              <strong>{step.label}</strong>
+              <code>{step.meta}</code>
+            </span>
+            <small>{step.help}</small>
+          </article>
+        ))}
+      </div>
+
+      <div className="requestPreview">
+        <article className="requestPreviewPanel">
+          <div className="previewHeader">
+            <Inbox size={18} />
+            <strong>{t("loginPreviewPending")}</strong>
+            <span>req_42c9</span>
+          </div>
+          <dl>
+            <div>
+              <dt>{t("loginPreviewKind")}</dt>
+              <dd>choice</dd>
+            </div>
+            <div>
+              <dt>{t("loginPreviewRoute")}</dt>
+              <dd>/mcp</dd>
+            </div>
+            <div>
+              <dt>{t("loginPreviewTimeout")}</dt>
+              <dd>90s</dd>
+            </div>
+          </dl>
+          <p>{t("loginPreviewPrompt")}</p>
+        </article>
+
+        <article className="requestPreviewPanel answered">
+          <div className="previewHeader">
+            <Check size={18} />
+            <strong>{t("loginPreviewAnswered")}</strong>
+            <span>human@team</span>
+          </div>
+          <dl>
+            <div>
+              <dt>{t("loginPreviewDecision")}</dt>
+              <dd>approve</dd>
+            </div>
+            <div>
+              <dt>{t("loginPreviewAudit")}</dt>
+              <dd>answered_at</dd>
+            </div>
+          </dl>
+          <p>{t("loginPreviewReply")}</p>
+        </article>
+      </div>
+    </section>
+  );
+}
+
+function LoginPublicSections({ leaderboard }: { leaderboard: HumanLeaderboardEntry[] }) {
+  const copy = loginPublicCopy();
+  const securityIcons = [
+    <Shield size={20} />,
+    <KeyRound size={20} />,
+    <Github size={20} />,
+    <Trophy size={20} />,
+    <Ban size={20} />,
+    <Check size={20} />
+  ];
+  const handledRows = [...leaderboard]
+    .filter((entry) => entry.requests_handled > 0)
+    .sort((a, b) => b.requests_handled - a.requests_handled)
+    .slice(0, 3);
+  const tokenRows = [...leaderboard]
+    .filter((entry) => entry.sent_tokens > 0)
+    .sort((a, b) => b.sent_tokens - a.sent_tokens)
+    .slice(0, 3);
+  const reputationRows = [...leaderboard]
+    .filter((entry) => (entry.reputation_breakdown?.total_weight ?? 0) > 0 || entry.ratings_count > 0)
+    .sort((a, b) => b.reputation - a.reputation || (b.reputation_breakdown?.confidence ?? 0) - (a.reputation_breakdown?.confidence ?? 0))
+    .slice(0, 3);
+
+  return (
+    <section className="loginPublicContent">
+      <section className="introSection securityIntro">
+        <div className="introHeader">
+          <span className="loginEyebrow">{copy.security.eyebrow}</span>
+          <h2>{copy.security.title}</h2>
+          <p>{copy.security.body}</p>
+        </div>
+        <div className="introCardGrid">
+          {copy.security.items.map((item, index) => (
+            <article className="introCard" key={item.title}>
+              <span className="introIcon">{securityIcons[index]}</span>
+              <h3>{item.title}</h3>
+              <p>{item.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="introSection splitIntro">
+        <div className="introHeader">
+          <span className="loginEyebrow">{copy.leaderboard.eyebrow}</span>
+          <h2>{copy.leaderboard.title}</h2>
+          <p>{copy.leaderboard.body}</p>
+        </div>
+        <div className="leaderboardPreview">
+          <article className="publicBoard">
+            <div className="publicBoardHead">
+              <Trophy size={18} />
+              <strong>{copy.leaderboard.handledTitle}</strong>
+            </div>
+            {handledRows.length > 0 ? (
+              <ol>
+                {handledRows.map((entry, index) => (
+                  <li key={entry.email}><span>#{index + 1}</span><strong>{entry.email}</strong><em>{formatNumber(entry.requests_handled)}</em></li>
+                ))}
+              </ol>
+            ) : (
+              <p className="publicBoardEmpty">{copy.leaderboard.empty}</p>
+            )}
+          </article>
+          <article className="publicBoard">
+            <div className="publicBoardHead">
+              <Send size={18} />
+              <strong>{copy.leaderboard.tokenTitle}</strong>
+            </div>
+            {tokenRows.length > 0 ? (
+              <ol>
+                {tokenRows.map((entry, index) => (
+                  <li key={entry.email}><span>#{index + 1}</span><strong>{entry.email}</strong><em>{formatCompactNumber(entry.sent_tokens)}</em></li>
+                ))}
+              </ol>
+            ) : (
+              <p className="publicBoardEmpty">{copy.leaderboard.empty}</p>
+            )}
+          </article>
+          <article className="publicBoard">
+            <div className="publicBoardHead">
+              <Shield size={18} />
+              <strong>{copy.leaderboard.reputationTitle}</strong>
+            </div>
+            {reputationRows.length > 0 ? (
+              <ol>
+                {reputationRows.map((entry, index) => (
+                  <li key={entry.email}>
+                    <span>#{index + 1}</span>
+                    <strong>{entry.email}</strong>
+                    <em>{formatScore(entry.reputation)}</em>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="publicBoardEmpty">{copy.leaderboard.empty}</p>
+            )}
+          </article>
+        </div>
+      </section>
+
+      <section className="introSection splitIntro">
+        <div className="introPanel">
+          <span className="introIcon"><UserPlus size={20} /></span>
+          <h2>{copy.friends.title}</h2>
+          {copy.friends.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+        </div>
+        <div className="introPanel">
+          <span className="introIcon"><Users size={20} /></span>
+          <h2>{copy.examples.title}</h2>
+          <div className="exampleList">
+            {copy.examples.items.map((item) => (
+              <div key={item.kind}>
+                <code>{item.kind}</code>
+                <span>{item.text}</span>
+              </div>
+            ))}
+          </div>
+          <p>{copy.examples.body}</p>
+        </div>
+      </section>
+
+      <section className="introSection integrationIntro">
+        <div className="introHeader">
+          <span className="loginEyebrow">{copy.integrations.eyebrow}</span>
+          <h2>{copy.integrations.title}</h2>
+          <p>{copy.integrations.body}</p>
+        </div>
+        <div className="integrationGrid">
+          {copy.integrations.items.map((item, index) => (
+            <article className={`introCard wide ${item.planned ? "planned" : ""}`} key={item.title}>
+              <span className="introIcon">
+                {[<Webhook size={20} />, <QrCode size={20} />, <Plus size={20} />, <MessageSquareText size={20} />][index]}
+              </span>
+              <div className="introCardTitle">
+                <h3>{item.title}</h3>
+                {item.planned && <span className="plannedBadge">{copy.integrations.plannedLabel}</span>}
+              </div>
+              <p>{item.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+    </section>
+  );
+}
+
+function loginPublicCopy() {
+  if (currentLanguage() === "en") {
+    return {
+      security: {
+        eyebrow: "security model",
+        title: "Security design: separate what an agent can do, who it can reach, and who is accountable for the answer",
+        body: "humen-mcp is not a public question box. It is a human collaboration layer with identity, secrets, reputation, friend scopes, and an audit trail.",
+        items: [
+          {
+            title: "Agent Secret",
+            body: "MCP requests require an Agent Secret. The current secret is composed from an administrator prefix plus a personal secret; rotating the prefix invalidates old agent access globally."
+          },
+          {
+            title: "Passwordless login",
+            body: "After signing in, users can bind a WebAuthn passkey. Later sign-ins only need the email plus device or password-manager verification."
+          },
+          {
+            title: "GitHub identity binding",
+            body: "OAuth sign-in binds the account to the email/login returned by GitHub. Public profile, tags, friends, reputation, and Agent Secret all belong to that stable identity."
+          },
+          {
+            title: "Initial reputation",
+            body: "GitHub OAuth seeds a baseline from account age, public repositories, sampled stars, follower count, source-repo ratio, and recent public activity."
+          },
+          {
+            title: "Report algorithm",
+            body: "Reports go to the administrator mailbox and also write a zero-score feedback signal from the reporter, weighted by the reporter's own reputation."
+          },
+          {
+            title: "Service scoring",
+            body: "Users or agent owners can rate collaborators from 0 to 10. Reputation blends the GitHub seed with feedback weighted by each rater's current reputation."
+          }
+        ]
+      },
+      leaderboard: {
+        eyebrow: "public leaderboard",
+        title: "Leaderboard mechanics are visible on the homepage",
+        body: "Before signing in, visitors can understand the community incentives: handled requests, output token contribution, and weighted trust scores with evidence.",
+        handledTitle: "Human handled requests",
+        tokenTitle: "Output token leaderboard",
+        reputationTitle: "Weighted reputation",
+        empty: "No public leaderboard data yet"
+      },
+      friends: {
+        title: "Friend system",
+        paragraphs: [
+          "Every user has a friend code. Others can send requests from a public profile or by entering that code; accepted requests create a mutual friendship.",
+          "Administrators can restrict the agent directory to self and friends, so private teams route work only to trusted people."
+        ]
+      },
+      examples: {
+        title: "What agents ask humans",
+        body: "Common use cases include release approval, UI screenshot review, account operations, content compliance, short research, and production-change confirmation.",
+        items: [
+          { kind: "choice", text: "May the agent run this database migration?" },
+          { kind: "judgment", text: "Does this response meet the compliance requirement?" },
+          { kind: "text", text: "Write a one-sentence human confirmation for this PR." },
+          { kind: "image_review", text: "Check whether the login button is covered in this screenshot." },
+          { kind: "steps", text: "Open the admin console, enable the account, and report the result." }
+        ]
+      },
+      integrations: {
+        eyebrow: "integrations",
+        title: "Webhook, personal WeChat, and community plugins",
+        body: "Beyond the web inbox, humen-mcp is connecting human replies to external IM systems and community extensions.",
+        plannedLabel: "In development",
+        items: [
+          {
+            title: "Webhook mechanism",
+            body: "Administrators can configure webhooks to push new agent requests to external systems. Replies can be mapped back by request ID or short ID."
+          },
+          {
+            title: "Built-in personal WeChat access",
+            body: "The built-in WeChat webhook type supports QR code, status, bot token, polling timeout, and API timeout settings for handling requests from personal WeChat."
+          },
+          {
+            title: "Community plugin support",
+            body: "Request templates, routing policies, scoring rules, and third-party channels will be extensible through plugins.",
+            planned: true
+          },
+          {
+            title: "More built-in IM support",
+            body: "More instant messaging channels will bring agent requests into the workflows teams already use.",
+            planned: true
+          }
+        ]
+      }
+    };
+  }
+
+  return {
+    security: {
+      eyebrow: "安全模型",
+      title: "安全设计：把 Agent 能做什么、能找谁、谁负责回答拆开控制",
+      body: "humen-mcp 的核心不是一个公开问答箱，而是带身份、secret、信誉、好友和审计记录的人类协作层。",
+      items: [
+        {
+          title: "Agent Secret 机制",
+          body: "MCP 请求需要 Agent Secret。当前 secret 由管理员前缀和个人 secret 组合而成，管理员轮换前缀即可让旧 Agent 接入整体失效。"
+        },
+        {
+          title: "无密码登录",
+          body: "用户登录后可绑定 WebAuthn Passkey；后续只需输入邮箱并完成设备或密码管理器验证，不再依赖站点密码。"
+        },
+        {
+          title: "GitHub 开源身份绑定",
+          body: "OAuth 登录把账号绑定到 GitHub 返回的 email/login，公开资料、标签、好友关系、信誉和 Agent Secret 都归属到这个稳定身份。"
+        },
+        {
+          title: "初始信誉算法",
+          body: "GitHub OAuth 会根据账号年龄、公开仓库、抽样 star、粉丝数、源码仓库占比和近期公开活动写入初始信誉种子。"
+        },
+        {
+          title: "举报算法",
+          body: "举报会进入管理员信箱，同时由举报者写入一条 0 分反馈信号；这条信号也会按举报者自身信誉加权。"
+        },
+        {
+          title: "服务打分设计",
+          body: "用户或 Agent owner 可按 0-10 分评价协作者。信誉由 GitHub 种子和按评分者当前信誉加权的反馈共同决定。"
+        }
+      ]
+    },
+    leaderboard: {
+      eyebrow: "公开排行榜",
+      title: "排行榜玩法公开在首页",
+      body: "登录前就能理解社区激励：谁处理了更多 Agent 请求、谁贡献了更多输出 token、谁的加权信誉有足够证据支撑。",
+      handledTitle: "人类处理榜",
+      tokenTitle: "输出 token 榜",
+      reputationTitle: "加权信誉榜",
+      empty: "暂无公开排行榜数据"
+    },
+    friends: {
+      title: "好友机制",
+      paragraphs: [
+        "每个用户都有好友代码。别人可以通过公开资料或好友代码发起申请，接受后双方进入好友关系。",
+        "管理员可以把 Agent 人才库可见范围限制为“仅自己和好友”，让私有团队只把请求路由给可信熟人。"
+      ]
+    },
+    examples: {
+      title: "Agent 会问人类什么",
+      body: "典型场景包括发布审批、UI 截图复核、账号操作、内容合规、短调研、生产环境变更确认。",
+      items: [
+        { kind: "choice", text: "是否允许 Agent 执行数据库迁移？" },
+        { kind: "judgment", text: "这段回复是否满足合规要求？" },
+        { kind: "text", text: "给这个 PR 写一句人类确认意见。" },
+        { kind: "image_review", text: "检查截图里的登录按钮是否被遮挡。" },
+        { kind: "steps", text: "按步骤在后台完成账号开通并回填结果。" }
+      ]
+    },
+    integrations: {
+      eyebrow: "集成能力",
+      title: "Webhook、个人微信和社区插件",
+      body: "除了网页收件箱，humen-mcp 也在把人类回复接到外部 IM 和社区扩展里。",
+      plannedLabel: "开发中",
+      items: [
+        {
+          title: "Webhook 机制",
+          body: "管理员可配置 Webhook，把新的 Agent 请求推送到外部系统；外部系统回复后再映射回请求 ID 或短 ID。"
+        },
+        {
+          title: "内置个人微信接入",
+          body: "内置 WeChat/微信 Webhook 类型支持二维码、状态、bot token、轮询超时等配置，适合把请求同步到个人微信处理。"
+        },
+        {
+          title: "社区插件支持",
+          body: "把请求模板、路由策略、评分规则和第三方通道做成插件，让社区扩展新的协作方式。",
+          planned: true
+        },
+        {
+          title: "更多内置 IM 支持",
+          body: "继续补充更多即时通讯通道，让 Agent 请求可以出现在团队已经使用的工作流里。",
+          planned: true
+        }
+      ]
+    }
+  };
 }
 
 function OAuthLoginButtons({ config }: { config: AuthConfig }) {
@@ -1562,10 +2116,11 @@ function LeaderboardView({
                 <strong>{entry.latest_answered_at ? formatTime(entry.latest_answered_at) : "-"}</strong>
                 {t("latestAnswered")}
               </span>
-              <span>
-                <strong>{formatScore(entry.reputation)}</strong>
-                {t("reputation")} · {entry.ratings_count}
-              </span>
+              <ReputationBadge
+                score={entry.reputation}
+                count={entry.ratings_count}
+                breakdown={entry.reputation_breakdown}
+              />
               <span className={entry.online ? "status onlineStatus" : "status"}>
                 {entry.online ? t("onlineStatus") : t("offlineStatus")}
               </span>
@@ -2420,6 +2975,7 @@ function AdminView({
   const [oauthClientId, setOauthClientId] = useState("");
   const [settingsStatus, setSettingsStatus] = useState("");
   const [oauthStatus, setOauthStatus] = useState<Record<string, string>>({});
+  const [githubTokenDraft, setGithubTokenDraft] = useState("");
   const [updateStatus, setUpdateStatus] = useState<AdminUpdateStatus | null>(null);
   const [updateMessage, setUpdateMessage] = useState("");
   const [updateBusy, setUpdateBusy] = useState(false);
@@ -2466,7 +3022,7 @@ function AdminView({
 
   async function saveSettings(next: AdminSettings) {
     setSettingsStatus(t("saving"));
-    setSettings(next);
+    setSettings(stripWriteOnlySettings(next));
     try {
       const response = await fetch(apiPath("/api/admin/settings"), {
         method: "POST",
@@ -2477,7 +3033,7 @@ function AdminView({
         setSettingsStatus((await safeError(response)) || "Save failed");
         return false;
       }
-      setSettings(mergeOAuthSecrets(await response.json(), next));
+      setSettings(stripWriteOnlySettings(mergeOAuthSecrets(await response.json(), next)));
       setSettingsStatus(t("saved"));
       return true;
     } catch (err) {
@@ -2508,6 +3064,18 @@ function AdminView({
     const nextChannels = settings.oauth_channels.filter((channel) => channel.provider !== normalized);
     nextChannels.push({ provider: normalized, enabled, client_id: clientId, client_secret: "" });
     saveSettings({ ...settings, oauth_channels: nextChannels });
+  }
+
+  async function saveGithubApiToken() {
+    const token = githubTokenDraft.trim();
+    if (!token) return;
+    const ok = await saveSettings({ ...settings, github_api_token: token });
+    if (ok) setGithubTokenDraft("");
+  }
+
+  async function clearGithubApiToken() {
+    const ok = await saveSettings({ ...settings, github_api_token: "" });
+    if (ok) setGithubTokenDraft("");
   }
 
   return (
@@ -2562,6 +3130,39 @@ function AdminView({
       </section>
 
       <AgentDirectoryPolicyPanel settings={settings} onSave={saveSettings} />
+
+      <section className="panel">
+        <div className="panelHead">
+          <div className="panelTitle">
+            <KeyRound size={18} />
+            <div>
+              <h3>{t("githubApiToken")}</h3>
+              <p>{t("githubApiTokenHelp")}</p>
+            </div>
+          </div>
+          <span className={`githubTokenStatus ${settings.github_api_token_configured ? "configured" : ""}`}>
+            {settings.github_api_token_configured ? t("githubApiTokenConfigured") : t("githubApiTokenMissing")}
+          </span>
+        </div>
+        <div className="githubTokenGrid">
+          <label>
+            <span>{t("githubApiToken")}</span>
+            <input
+              type="password"
+              value={githubTokenDraft}
+              onChange={(event) => setGithubTokenDraft(event.target.value)}
+              placeholder={t("githubApiTokenPlaceholder")}
+              autoComplete="off"
+            />
+          </label>
+          <button className="primary" onClick={saveGithubApiToken} disabled={!githubTokenDraft.trim()}>
+            <Check size={16} /> {t("save")}
+          </button>
+          <button className="secondary" onClick={clearGithubApiToken} disabled={!settings.github_api_token_configured && !githubTokenDraft.trim()}>
+            <Trash2 size={16} /> {t("clearToken")}
+          </button>
+        </div>
+      </section>
 
       <section className="panel">
         <div className="panelHead">
@@ -3410,7 +4011,12 @@ function UserCard({
         <div className="metaRow">
           <span className={profile.online ? "status onlineStatus" : "status"}>{profile.online ? t("onlineStatus") : t("offlineStatus")}</span>
           <span>{profile.provider}</span>
-          <span>{t("reputation")} {formatScore(profile.reputation)} ({profile.ratings_count ?? 0})</span>
+          <ReputationBadge
+            score={profile.reputation}
+            count={profile.ratings_count ?? 0}
+            breakdown={profile.reputation_breakdown}
+            compact
+          />
           {profile.is_public && <span>{currentLanguage() === "zh" ? "公开" : "Public"}</span>}
           {banned && <span className="dangerText">banned until {formatTime(profile.ban_expires_at!)}</span>}
         </div>
@@ -3473,6 +4079,44 @@ function UserCard({
         {status && <div className={status.endsWith(".") || status.endsWith("。") ? "inlineStatus" : "notice warning"}>{status}</div>}
       </div>
     </article>
+  );
+}
+
+function ReputationBadge({
+  score,
+  count,
+  breakdown,
+  compact = false
+}: {
+  score: number;
+  count: number;
+  breakdown?: ReputationBreakdown | null;
+  compact?: boolean;
+}) {
+  const seedSource = breakdown?.seed_source;
+  const seedLabel = seedSource === "github"
+    ? t("reputationSeedGithub")
+    : seedSource || t("reputationSeedNone");
+  const totalWeight = breakdown?.total_weight ?? 0;
+  const confidence = breakdown?.confidence ?? 0;
+  const title = [
+    t("reputationWeightedHelp"),
+    `${t("reputationEvidence")}: ${formatWeight(totalWeight)}`,
+    `${t("reputationConfidence")}: ${formatPercent(confidence)}`
+  ].join("\n");
+
+  return (
+    <span className={`reputationBadge ${compact ? "compact" : ""}`} title={title}>
+      <strong>{formatScore(score)}</strong>
+      <span className="reputationDetails">
+        {t("reputation")} · {count} · {seedLabel}
+      </span>
+      {!compact && (
+        <span className="reputationDetails">
+          {t("reputationEvidence")} {formatWeight(totalWeight)} · {t("reputationConfidence")} {formatPercent(confidence)}
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -3861,7 +4505,7 @@ codex mcp remove humen
 
 只有客户端无法配置 Authorization: Bearer 时，才使用兼容 header：x-humen-agent-secret = ${accessKey}
 
-配置后请重启/刷新 MCP 连接，并执行 tools/list 验证能看到 ask_humen、ask_humen_async、ask_humen_text_async、ask_humen_choice_async、ask_humen_judgment_async、read_humen_replies、create_humen_task、list_humen_tasks、list_online_humens、search_humen_profiles、list_humen_tags、rate_humen、report_humen。`;
+配置后请重启/刷新 MCP 连接，并执行 tools/list 验证能看到 approve、judge、feedback、ask_humen、ask_humen_async、ask_humen_text_async、ask_humen_choice_async、ask_humen_judgment_async、read_humen_replies、create_humen_task、list_humen_tasks、list_online_humens、search_humen_profiles、list_humen_tags、rate_humen、report_humen。`;
 }
 
 async function copyToClipboard(text: string, setStatus: (status: string) => void) {
@@ -3909,6 +4553,11 @@ function mergeOAuthSecrets(saved: AdminSettings, draft: AdminSettings): AdminSet
   };
 }
 
+function stripWriteOnlySettings(settings: AdminSettings): AdminSettings {
+  const { github_api_token: _githubApiToken, ...rest } = settings;
+  return rest;
+}
+
 function imageSource(request: HumanRequest) {
   if (request.image_url) return request.image_url;
   const image = request.image_base64?.trim();
@@ -3947,6 +4596,14 @@ function formatScore(value: number | null | undefined) {
   return new Intl.NumberFormat(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value ?? 5);
 }
 
+function formatWeight(value: number | null | undefined) {
+  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(value ?? 0);
+}
+
+function formatPercent(value: number | null | undefined) {
+  return new Intl.NumberFormat(undefined, { style: "percent", maximumFractionDigits: 0 }).format(value ?? 0);
+}
+
 function logout(
   setToken: (token: string) => void,
   setUser: (user: User | null) => void,
@@ -3964,4 +4621,20 @@ function logout(
   setTrash([]);
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+function Root() {
+  const [preferences, setPreferences] = usePreferences();
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = preferences.theme;
+    document.documentElement.dataset.compact = preferences.compact ? "true" : "false";
+    document.documentElement.lang = preferences.language;
+  }, [preferences.theme, preferences.compact, preferences.language]);
+
+  return (
+    <MantineProvider theme={theme} forceColorScheme={preferences.theme}>
+      <App preferences={preferences} setPreferences={setPreferences} />
+    </MantineProvider>
+  );
+}
+
+createRoot(document.getElementById("root")!).render(<Root />);
