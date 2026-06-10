@@ -73,6 +73,14 @@ type AnsweredRequest = {
   answered_late: boolean;
 };
 
+type HumanMemo = {
+  id: string;
+  target_email: string;
+  author_email: string;
+  body: string;
+  created_at: number;
+};
+
 type AgentTaskStatus = "open" | "in_progress" | "done" | "archived";
 
 type AgentTask = {
@@ -503,6 +511,11 @@ const zhText: Record<string, string> = {
   acceptFriend: "接受好友",
   removeFriend: "移除好友",
   friendPending: "已发送申请",
+  memoBoard: "留言板",
+  memoPlaceholder: "给这个人类留言，或记录短期上下文",
+  sendMemo: "发送留言",
+  noMemos: "暂无留言",
+  memoSaved: "留言已保存。",
   friends: "好友",
   incomingRequests: "收到的申请",
   outgoingRequests: "已发送申请",
@@ -754,6 +767,11 @@ const enText: Record<string, string> = {
   acceptFriend: "Accept friend",
   removeFriend: "Remove friend",
   friendPending: "Request sent",
+  memoBoard: "Memo board",
+  memoPlaceholder: "Leave an offline message or short-term context",
+  sendMemo: "Send memo",
+  noMemos: "No memos yet",
+  memoSaved: "Memo saved.",
   friends: "Friends",
   incomingRequests: "Incoming requests",
   outgoingRequests: "Outgoing requests",
@@ -4288,15 +4306,68 @@ function UserCard({
   onRemove?: (email: string) => void;
   onChanged?: () => void;
 }) {
-  const [mode, setMode] = useState<"idle" | "rate" | "report">("idle");
+  const [mode, setMode] = useState<"idle" | "rate" | "report" | "memo">("idle");
   const [score, setScore] = useState(5);
   const [reason, setReason] = useState("");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
+  const [memos, setMemos] = useState<HumanMemo[]>([]);
+  const [memoDraft, setMemoDraft] = useState("");
+  const [memosLoaded, setMemosLoaded] = useState(false);
   const banned = profile.ban_expires_at && profile.ban_expires_at > Math.floor(Date.now() / 1000);
   const isSelf = currentUser ? profile.email.toLowerCase() === currentUser.toLowerCase() : false;
   const canReview = Boolean(token) && !isSelf;
   const githubUrl = githubProfileUrl(profile);
+
+  useEffect(() => {
+    setMemos([]);
+    setMemoDraft("");
+    setMemosLoaded(false);
+    setMode("idle");
+  }, [profile.email]);
+
+  useEffect(() => {
+    if (mode === "memo" && token && !memosLoaded) {
+      void loadMemos();
+    }
+  }, [mode, token, memosLoaded]);
+
+  async function loadMemos() {
+    if (!token) return;
+    const response = await fetch(apiPath(`/api/humans/${encodeURIComponent(profile.email)}/memos`), {
+      headers: authHeaders(token)
+    });
+    if (!response.ok) {
+      setStatus((await safeError(response)) || t("saveFailed"));
+      return;
+    }
+    setMemos((await safeJson<HumanMemo[]>(response)) ?? []);
+    setMemosLoaded(true);
+  }
+
+  async function submitMemo() {
+    if (!token || !memoDraft.trim()) return;
+    setBusy(true);
+    setStatus("");
+    try {
+      const response = await fetch(apiPath(`/api/humans/${encodeURIComponent(profile.email)}/memos`), {
+        method: "POST",
+        headers: { ...authHeaders(token), "content-type": "application/json" },
+        body: JSON.stringify({ body: memoDraft.trim() })
+      });
+      if (!response.ok) {
+        setStatus((await safeError(response)) || t("saveFailed"));
+        return;
+      }
+      const memo = await safeJson<HumanMemo>(response);
+      if (memo) setMemos((current) => [memo, ...current]);
+      setMemoDraft("");
+      setMemosLoaded(true);
+      setStatus(t("memoSaved"));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submitRating() {
     if (!token) return;
@@ -4375,22 +4446,27 @@ function UserCard({
           </div>
         )}
         <div className="tagRow">{profile.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
-        {!isSelf && (onAdd || onAccept || onRemove) && (
+        {(token || (!isSelf && (onAdd || onAccept || onRemove))) && (
           <div className="userCardActions">
-            {profile.is_friend && onRemove && (
+            {!isSelf && profile.is_friend && onRemove && (
               <button className="secondary small" onClick={() => onRemove(profile.email)}>
                 <Trash2 size={15} /> {t("removeFriend")}
               </button>
             )}
-            {profile.friend_request_received && onAccept && (
+            {!isSelf && profile.friend_request_received && onAccept && (
               <button className="secondary small" onClick={() => onAccept(profile.email)}>
                 <Check size={15} /> {t("acceptFriend")}
               </button>
             )}
-            {profile.friend_request_sent && <span className="statusPill">{t("friendPending")}</span>}
-            {!profile.is_friend && !profile.friend_request_received && !profile.friend_request_sent && profile.is_public && onAdd && (
+            {!isSelf && profile.friend_request_sent && <span className="statusPill">{t("friendPending")}</span>}
+            {!isSelf && !profile.is_friend && !profile.friend_request_received && !profile.friend_request_sent && profile.is_public && onAdd && (
               <button className="secondary small" onClick={() => onAdd(profile.email)}>
                 <UserPlus size={15} /> {t("addFriend")}
+              </button>
+            )}
+            {token && (
+              <button className="secondary small" onClick={() => setMode(mode === "memo" ? "idle" : "memo")}>
+                <MessageSquareText size={15} /> {t("memoBoard")}
               </button>
             )}
             {canReview && (
@@ -4424,10 +4500,32 @@ function UserCard({
             </button>
           </div>
         )}
+        {token && mode === "memo" && (
+          <div className="reviewBox memoBoard">
+            <div className="memoList">
+              {memos.map((memo) => (
+                <article className="memoItem" key={memo.id}>
+                  <p>{memo.body}</p>
+                  <small>{displayMemoAuthor(memo.author_email)} · {formatTime(memo.created_at)}</small>
+                </article>
+              ))}
+              {memos.length === 0 && <small>{t("noMemos")}</small>}
+            </div>
+            <textarea value={memoDraft} onChange={(event) => setMemoDraft(event.target.value)} placeholder={t("memoPlaceholder")} />
+            <button className="primary small" onClick={submitMemo} disabled={busy || !memoDraft.trim()}>
+              <MessageSquareText size={15} /> {t("sendMemo")}
+            </button>
+          </div>
+        )}
         {status && <div className={status.endsWith(".") || status.endsWith("。") ? "inlineStatus" : "notice warning"}>{status}</div>}
       </div>
     </article>
   );
+}
+
+function displayMemoAuthor(email: string) {
+  if (email.startsWith("github:")) return email.replace(/^github:/, "GitHub ");
+  return email;
 }
 
 function ReputationBadge({

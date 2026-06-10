@@ -194,6 +194,11 @@ code, pre, .introCodeLine code, .exampleList code, .oauthCallbackHint code, .wei
 pre { overflow: auto; margin: 0; padding: 14px; border-radius: var(--mantine-radius-md); background: var(--app-soft); line-height: 1.5; white-space: pre-wrap; }
 :where(.reviewBox, .onboardingBox, .oauthCallbackHint, .agentPolicySummary, .guideWarning, .notice) { padding: 12px; background: var(--app-soft); }
 .notice { box-shadow: none; }
+.memoBoard { display: grid; gap: 10px; }
+.memoList { display: grid; gap: 8px; max-height: 220px; overflow: auto; }
+.memoItem { display: grid; gap: 4px; padding: 10px; border: 1px solid var(--app-border); border-radius: var(--mantine-radius-md); background: var(--app-surface); }
+.memoItem p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.memoItem small { color: var(--app-muted); }
 
 .segmented { display: inline-flex; width: fit-content; overflow: hidden; border: 1px solid var(--app-border); border-radius: var(--mantine-radius-md); background: var(--app-surface); }
 .segmented button { min-height: 36px; border: 0; border-radius: 0; padding: 0 12px; }
