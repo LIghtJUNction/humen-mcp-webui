@@ -78,6 +78,8 @@ type HumanMemo = {
   id: string;
   target_email: string;
   author_email: string;
+  author_agent_id?: string | null;
+  author_agent_name?: string | null;
   body: string;
   created_at: number;
   read_at?: number | null;
@@ -4778,7 +4780,7 @@ function UserCard({
                 <article className="memoItem" key={memo.id}>
                   <p>{memo.body}</p>
                   <small>
-                    {displayMemoAuthor(memo.author_email)}
+                    {displayMemoAuthor(memo)}
                     {" · "}
                     {formatTime(memo.created_at)}
                     {" · "}
@@ -4800,7 +4802,15 @@ function UserCard({
   );
 }
 
-function displayMemoAuthor(email: string) {
+function displayMemoAuthor(memo: HumanMemo | string): string {
+  if (typeof memo !== "string" && memo.author_agent_name) {
+    return `${memo.author_agent_name} (${displayMemoAuthorEmail(memo.author_email)})`;
+  }
+  const email = typeof memo === "string" ? memo : memo.author_email;
+  return displayMemoAuthorEmail(email);
+}
+
+function displayMemoAuthorEmail(email: string): string {
   if (email.startsWith("github:")) return email.replace(/^github:/, "GitHub ");
   return email;
 }
@@ -5357,7 +5367,7 @@ ${importJson}
 
 只有客户端无法配置 Authorization: Bearer 时，才使用兼容 header：x-humen-agent-secret = ${accessKey}
 
-配置后请重启/刷新 MCP 连接，并执行 tools/list 验证能看到 approve、judge、feedback、ask_humen、ask_humen_async、ask_humen_text_async、ask_humen_choice_async、ask_humen_judgment_async、read_humen_replies、create_humen_task、list_humen_tasks、list_agent_inbox、request_human_friend、accept_human_friend、list_online_humens、search_humen_profiles、list_humen_tags、rate_humen、report_humen。`;
+配置后请重启/刷新 MCP 连接，并执行 tools/list 验证能看到 approve、judge、feedback、ask_humen、ask_humen_async、ask_humen_text_async、ask_humen_choice_async、ask_humen_judgment_async、read_humen_replies、create_humen_task、leave_humen_memo、list_humen_tasks、list_agent_inbox、request_human_friend、accept_human_friend、list_online_humens、search_humen_profiles、list_humen_tags、rate_humen、report_humen。`;
 }
 
 async function copyToClipboard(text: string, setStatus: (status: string) => void) {
