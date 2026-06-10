@@ -1378,7 +1378,7 @@ function App({ preferences, setPreferences }: AppProps) {
         />
         {view === "inbox" && (selected ? <TaskPanel request={selected} token={token} now={now} afterSubmit={() => setSelectedId(null)} /> : <Blank />)}
         {view === "tasks" && <AgentTasksView tasks={tasks} token={token} setTasks={setTasks} />}
-        {view === "sent" && <SentView sent={sent} />}
+        {view === "sent" && <SentView sent={sent} token={token} setSent={setSent} />}
         {view === "trash" && <TrashView trash={trash} token={token} setTrash={setTrash} />}
         {view === "directory" && <DirectoryView query={query} setQuery={setQuery} users={directory} tags={tagStats} token={token} currentUser={user.email} onChanged={() => {
           refreshUsers(token, setOnlineUsers, setDirectory, setTagStats);
@@ -2248,7 +2248,13 @@ function TaskPanel({ request, token, now, afterSubmit }: { request: HumanRequest
   );
 }
 
-function SentView({ sent }: { sent: AnsweredRequest[] }) {
+function SentView({ sent, token, setSent }: { sent: AnsweredRequest[]; token: string; setSent: (sent: AnsweredRequest[]) => void }) {
+  async function remove(id: string) {
+    if (await hideRequest(token, id)) {
+      setSent(sent.filter((entry) => entry.request.id !== id));
+    }
+  }
+
   return (
     <section className="page">
       <div className="pageTitle">
@@ -2260,6 +2266,9 @@ function SentView({ sent }: { sent: AnsweredRequest[] }) {
             <div className="cardHead">
               <Send size={18} />
               <strong>{entry.request.title}</strong>
+              <button className="secondary small" onClick={() => remove(entry.request.id)}>
+                <Trash2 size={15} /> {t("remove")}
+              </button>
             </div>
             <p>{entry.answer.answer}</p>
             {entry.answer.note && <small>{entry.answer.note}</small>}
@@ -2283,6 +2292,12 @@ function TrashView({ trash, token, setTrash }: { trash: ExpiredRequest[]; token:
     setTrash([]);
   }
 
+  async function remove(id: string) {
+    if (await hideRequest(token, id)) {
+      setTrash(trash.filter((entry) => entry.request.id !== id));
+    }
+  }
+
   return (
     <section className="page">
       <div className="pageTitle">
@@ -2297,6 +2312,9 @@ function TrashView({ trash, token, setTrash }: { trash: ExpiredRequest[]; token:
             <div className="cardHead">
               <Trash2 size={18} />
               <strong>{entry.request.title}</strong>
+              <button className="secondary small" onClick={() => remove(entry.request.id)}>
+                <Trash2 size={15} /> {t("remove")}
+              </button>
             </div>
             <p>{entry.reason}</p>
             <small>{formatTime(entry.expired_at)}</small>
@@ -5043,6 +5061,14 @@ async function refreshTrash(token: string, setTrash: (trash: ExpiredRequest[]) =
   const response = await fetch(apiPath("/api/trash"), { headers: authHeaders(token) });
   const data = await safeJson<ExpiredRequest[]>(response);
   setTrash(data ? sortTrash(data) : []);
+}
+
+async function hideRequest(token: string, id: string) {
+  const response = await fetch(apiPath(`/api/requests/${encodeURIComponent(id)}/hide`), {
+    method: "POST",
+    headers: authHeaders(token)
+  });
+  return response.ok;
 }
 
 async function refreshAgents(token: string, setAgents: (agents: ConnectedAgent[]) => void) {
