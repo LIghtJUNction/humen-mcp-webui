@@ -1334,6 +1334,9 @@ function App({ preferences, setPreferences }: AppProps) {
         setMemoRefreshSeq((current) => current + 1);
         refreshMemoUnread(token, setMemoUnread);
       }
+      if (message.type === "agent_inbox_changed") {
+        refreshAgents(token, setAgents);
+      }
       if (message.type === "trash_cleaned") {
         refreshTrash(token, setTrash);
       }
