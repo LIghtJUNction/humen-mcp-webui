@@ -133,6 +133,20 @@ type ConnectedAgent = {
   pending_messages: AgentHumanMessage[];
 };
 
+type PublicConnectedAgent = {
+  owner_platform_name: string;
+  name: string;
+  description: string;
+  current_task: string;
+  last_tool: string;
+  last_seen_at: number;
+  last_request_at?: number | null;
+  request_count: number;
+  reputation: number;
+  ratings_count: number;
+  online: boolean;
+};
+
 type AgentTaskStatus = "open" | "in_progress" | "done" | "archived";
 
 type AgentTask = {
@@ -1566,6 +1580,7 @@ function Login({ onToken }: { onToken: (token: string) => void }) {
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [authConfig, setAuthConfig] = useState<AuthConfig>({ github_enabled: false, allow_registration: true });
   const [publicLeaderboard, setPublicLeaderboard] = useState<HumanLeaderboardEntry[]>([]);
+  const [publicAgents, setPublicAgents] = useState<PublicConnectedAgent[]>([]);
   const [landingTone, setLandingTone] = useState<"moss" | "graphite" | "sand" | "sky">("moss");
 
   useEffect(() => {
@@ -1577,6 +1592,10 @@ function Login({ onToken }: { onToken: (token: string) => void }) {
       .then((response) => safeJson<HumanLeaderboardEntry[]>(response))
       .then((entries) => setPublicLeaderboard(entries ?? []))
       .catch(() => setPublicLeaderboard([]));
+    fetch(apiPath("/api/public/agents"))
+      .then((response) => safeJson<PublicConnectedAgent[]>(response))
+      .then((agents) => setPublicAgents(agents ?? []))
+      .catch(() => setPublicAgents([]));
   }, []);
 
   async function submit(event: FormEvent) {
@@ -1753,7 +1772,7 @@ function Login({ onToken }: { onToken: (token: string) => void }) {
         {loginPanel}
       </section>
 
-      <LoginPublicSections leaderboard={publicLeaderboard} />
+      <LoginPublicSections leaderboard={publicLeaderboard} agents={publicAgents} />
     </main>
   );
 }
@@ -1960,7 +1979,7 @@ function LoginFlowStage() {
   );
 }
 
-function LoginPublicSections({ leaderboard }: { leaderboard: HumanLeaderboardEntry[] }) {
+function LoginPublicSections({ leaderboard, agents }: { leaderboard: HumanLeaderboardEntry[]; agents: PublicConnectedAgent[] }) {
   const copy = loginPublicCopy();
   const securityIcons = [
     <Shield size={20} />,
@@ -1982,9 +2001,75 @@ function LoginPublicSections({ leaderboard }: { leaderboard: HumanLeaderboardEnt
     .filter((entry) => (entry.reputation_breakdown?.total_weight ?? 0) > 0 || entry.ratings_count > 0)
     .sort((a, b) => b.reputation - a.reputation || (b.reputation_breakdown?.confidence ?? 0) - (a.reputation_breakdown?.confidence ?? 0))
     .slice(0, 3);
+  const talentRows = [...leaderboard]
+    .sort((a, b) => b.reputation - a.reputation || b.requests_handled - a.requests_handled)
+    .slice(0, 6);
+  const agentRows = [...agents]
+    .sort((a, b) => Number(b.online) - Number(a.online) || b.request_count - a.request_count || b.reputation - a.reputation)
+    .slice(0, 6);
 
   return (
     <section className="loginPublicContent">
+      <section className="introSection publicLibrarySection">
+        <div className="introHeader">
+          <span className="loginEyebrow">{copy.libraries.eyebrow}</span>
+          <h2>{copy.libraries.title}</h2>
+          <p>{copy.libraries.body}</p>
+        </div>
+        <div className="publicLibraryGrid">
+          <article className="publicLibraryPanel">
+            <div className="publicBoardHead">
+              <Users size={18} />
+              <strong>{copy.libraries.talentTitle}</strong>
+              <span>{talentRows.length}</span>
+            </div>
+            <div className="publicTalentList">
+              {talentRows.map((profile) => (
+                <a className="publicTalentCard" href={profileHomePath(profile) ?? "#"} key={profile.email}>
+                  <span className={`libraryStatus ${profile.online ? "online" : ""}`} />
+                  <strong>{displayIdentity(profile)}</strong>
+                  <em>{formatScore(profile.reputation)}</em>
+                  <p>{profile.profile || (currentLanguage() === "zh" ? "公开人才资料待补充" : "Public profile pending")}</p>
+                  <div>
+                    {profile.tags.slice(0, 3).map((tag) => <code key={tag}>{tag}</code>)}
+                    {profile.tags.length === 0 && <code>#human</code>}
+                  </div>
+                </a>
+              ))}
+              {talentRows.length === 0 && <p className="publicBoardEmpty">{copy.libraries.emptyTalent}</p>}
+            </div>
+          </article>
+
+          <article className="publicLibraryPanel">
+            <div className="publicBoardHead">
+              <Bot size={18} />
+              <strong>{copy.libraries.agentTitle}</strong>
+              <span>{agentRows.length}</span>
+            </div>
+            <div className="publicAgentList">
+              {agentRows.map((agent) => (
+                <article className="publicAgentCard" key={`${agent.owner_platform_name}-${agent.name}-${agent.last_seen_at}`}>
+                  <div>
+                    <span className={`libraryStatus ${agent.online ? "online" : ""}`} />
+                    <strong>{agent.name || "agent"}</strong>
+                    <em>{agent.owner_platform_name}</em>
+                  </div>
+                  <p>{agent.description || agent.current_task || (currentLanguage() === "zh" ? "等待下一次 Agent 心跳" : "Waiting for the next agent heartbeat")}</p>
+                  <dl>
+                    <div><dt>{copy.libraries.requests}</dt><dd>{formatNumber(agent.request_count)}</dd></div>
+                    <div><dt>{copy.libraries.reputation}</dt><dd>{formatScore(agent.reputation)}</dd></div>
+                    <div><dt>{copy.libraries.lastTool}</dt><dd>{agent.last_tool || "-"}</dd></div>
+                  </dl>
+                </article>
+              ))}
+              {agentRows.length === 0 && <p className="publicBoardEmpty">{copy.libraries.emptyAgents}</p>}
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <VisibilityModelDemo />
+
       <section className="introSection securityIntro">
         <div className="introHeader">
           <span className="loginEyebrow">{copy.security.eyebrow}</span>
@@ -2107,9 +2192,133 @@ function LoginPublicSections({ leaderboard }: { leaderboard: HumanLeaderboardEnt
   );
 }
 
+function VisibilityModelDemo() {
+  const copy = loginPublicCopy().visibility;
+  const [mode, setMode] = useState<"private" | "friends" | "agents" | "public">("agents");
+  const active = copy.modes.find((item) => item.id === mode) ?? copy.modes[0];
+  const visible = new Set(active.visible);
+  const nodes = [
+    { id: "owner", label: copy.nodes.owner, meta: copy.nodes.ownerMeta, icon: <UserCircle size={18} /> },
+    { id: "friends", label: copy.nodes.friends, meta: copy.nodes.friendsMeta, icon: <Users size={18} /> },
+    { id: "agents", label: copy.nodes.agents, meta: copy.nodes.agentsMeta, icon: <Bot size={18} /> },
+    { id: "public", label: copy.nodes.public, meta: copy.nodes.publicMeta, icon: <Search size={18} /> },
+    { id: "admin", label: copy.nodes.admin, meta: copy.nodes.adminMeta, icon: <Shield size={18} /> }
+  ];
+
+  return (
+    <section className="introSection visibilitySection">
+      <div className="visibilityCopy">
+        <span className="loginEyebrow">{copy.eyebrow}</span>
+        <h2>{copy.title}</h2>
+        <p>{copy.body}</p>
+        <div className="visibilityTabs" aria-label={copy.tabLabel}>
+          {copy.modes.map((item) => (
+            <button
+              className={item.id === mode ? "active" : ""}
+              key={item.id}
+              onClick={() => setMode(item.id)}
+              type="button"
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <article className="visibilityRule">
+          <strong>{active.title}</strong>
+          <span>{active.rule}</span>
+        </article>
+      </div>
+
+      <div className="visibilityMap" data-mode={mode} aria-label={copy.mapLabel}>
+        <span className={`visibilityBeam beamFriends ${visible.has("friends") ? "visible" : ""}`} />
+        <span className={`visibilityBeam beamAgents ${visible.has("agents") ? "visible" : ""}`} />
+        <span className={`visibilityBeam beamPublic ${visible.has("public") ? "visible" : ""}`} />
+        <span className={`visibilityBeam beamAdmin ${visible.has("admin") ? "visible" : ""}`} />
+        <span className="visibilityBoundary boundaryFriend">{copy.boundaries.friend}</span>
+        <span className="visibilityBoundary boundarySecret">{copy.boundaries.secret}</span>
+        {nodes.map((node) => (
+          <article
+            className={`visibilityNode node-${node.id} ${visible.has(node.id) ? "visible" : "blocked"}`}
+            key={node.id}
+          >
+            <span>{node.icon}</span>
+            <strong>{node.label}</strong>
+            <em>{node.meta}</em>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function loginPublicCopy() {
   if (currentLanguage() === "en") {
     return {
+      libraries: {
+        eyebrow: "public directory",
+        title: "Public people and Agents are visible before sign-in",
+        body: "Visitors can inspect public humans, online state, tags, reputation, and live Agent summaries. Private relationships and pending messages stay behind login.",
+        talentTitle: "Public talent library",
+        agentTitle: "Agents library",
+        requests: "Requests",
+        reputation: "Reputation",
+        lastTool: "Last tool",
+        emptyTalent: "No public people yet",
+        emptyAgents: "No public Agent heartbeats yet"
+      },
+      visibility: {
+        eyebrow: "visibility model",
+        title: "The homepage shows the current visible range instead of hiding the rules",
+        body: "Switch scopes to see what becomes readable. The animation keeps one center identity and expands only the permitted rings.",
+        tabLabel: "Visibility scope",
+        mapLabel: "Interactive visibility model",
+        nodes: {
+          owner: "Self",
+          ownerMeta: "account + inbox",
+          friends: "Friends",
+          friendsMeta: "accepted links",
+          agents: "Agents",
+          agentsMeta: "valid secret",
+          public: "Public",
+          publicMeta: "discoverable fields",
+          admin: "Admin policy",
+          adminMeta: "prefix + audit"
+        },
+        boundaries: {
+          friend: "friend scope",
+          secret: "Agent Secret boundary"
+        },
+        modes: [
+          {
+            id: "private" as const,
+            label: "Private",
+            title: "Private profile",
+            rule: "Only the signed-in user can read private inbox, relations, pending messages, and secret material.",
+            visible: ["owner", "admin"]
+          },
+          {
+            id: "friends" as const,
+            label: "Friends",
+            title: "Friend-visible directory",
+            rule: "Accepted friends can discover profile fields allowed by the user and team policy; pending requests stay private.",
+            visible: ["owner", "friends", "admin"]
+          },
+          {
+            id: "agents" as const,
+            label: "Agents",
+            title: "Agent-visible routing",
+            rule: "A valid Agent Secret can reach the bound user, permitted friends, and policy-approved searchable profiles.",
+            visible: ["owner", "friends", "agents", "admin"]
+          },
+          {
+            id: "public" as const,
+            label: "Public",
+            title: "Public discovery",
+            rule: "Only public profile, tags, reputation, online signal, and sanitized Agent summaries are visible without login.",
+            visible: ["owner", "friends", "agents", "public", "admin"]
+          }
+        ]
+      },
       security: {
         eyebrow: "security model",
         title: "Security design: separate what an agent can do, who it can reach, and who is accountable for the answer",
@@ -2198,6 +2407,71 @@ function loginPublicCopy() {
   }
 
   return {
+    libraries: {
+      eyebrow: "公开目录",
+      title: "公开人才库和 Agents 库直接展示在首页",
+      body: "无需登录即可看到公开人才、在线状态、标签、信誉和当前活跃的 Agent 概况；敏感关系、待处理消息和 secret 仍只在登录后可见。",
+      talentTitle: "公开人才库",
+      agentTitle: "Agents 库",
+      requests: "请求",
+      reputation: "信誉",
+      lastTool: "最近工具",
+      emptyTalent: "暂无公开人才资料",
+      emptyAgents: "暂无公开 Agent 心跳"
+    },
+    visibility: {
+      eyebrow: "可见范围模型",
+      title: "首页直接演示当前安全模型，不让规则藏在文档里",
+      body: "切换范围就能看到哪些节点被点亮。中心身份不变，只扩展被策略允许读取的圈层。",
+      tabLabel: "可见范围",
+      mapLabel: "可见范围交互模型",
+      nodes: {
+        owner: "本人",
+        ownerMeta: "账号 + 收件箱",
+        friends: "好友",
+        friendsMeta: "已接受关系",
+        agents: "Agents",
+        agentsMeta: "有效 secret",
+        public: "公开访客",
+        publicMeta: "可发现字段",
+        admin: "管理员策略",
+        adminMeta: "前缀 + 审计"
+      },
+      boundaries: {
+        friend: "好友可见圈",
+        secret: "Agent Secret 边界"
+      },
+      modes: [
+        {
+          id: "private" as const,
+          label: "私有",
+          title: "私有资料",
+          rule: "只有登录用户本人能读取私有收件箱、关系、待处理消息和 secret 材料。",
+          visible: ["owner", "admin"]
+        },
+        {
+          id: "friends" as const,
+          label: "好友",
+          title: "好友可见目录",
+          rule: "已接受的好友可发现用户允许公开给好友的资料；待处理申请仍然不可见。",
+          visible: ["owner", "friends", "admin"]
+        },
+        {
+          id: "agents" as const,
+          label: "Agents",
+          title: "Agent 可见路由",
+          rule: "有效 Agent Secret 可以访问绑定用户、允许的好友，以及策略允许搜索的用户资料。",
+          visible: ["owner", "friends", "agents", "admin"]
+        },
+        {
+          id: "public" as const,
+          label: "公开",
+          title: "公开发现",
+          rule: "未登录访客只能看到公开资料、标签、信誉、在线信号和脱敏后的 Agent 概况。",
+          visible: ["owner", "friends", "agents", "public", "admin"]
+        }
+      ]
+    },
     security: {
       eyebrow: "安全模型",
       title: "安全设计：把 Agent 能做什么、能找谁、谁负责回答拆开控制",
