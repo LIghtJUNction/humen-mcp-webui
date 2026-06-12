@@ -317,6 +317,7 @@ type WebhookConfig = {
   weixin_account_id?: string | null;
   weixin_base_url?: string | null;
   weixin_user_id?: string | null;
+  weixin_ready?: boolean;
   weixin_get_updates_buf?: string | null;
   weixin_last_error?: string | null;
   weixin_last_seen_at?: number | null;
@@ -369,6 +370,8 @@ const preferencesKey = "humen-mcp-preferences";
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 const sourceUrl = "https://github.com/LIghtJUNction/humen-mcp";
 const reservedTags = new Set(["#admin"]);
+const memoBodyMaxChars = 1200;
+const memoBodyMaxLines = 30;
 const defaultWebhookHelpPrompt = `直接回复本消息就是回答。
 如果问题积压，请引用对应问题回复，系统会优先匹配引用中的 请求ID 或 [humen:短ID]。
 网页处理地址：{url}
@@ -377,6 +380,24 @@ const defaultWebhookHelpPrompt = `直接回复本消息就是回答。
 
 type Theme = "light" | "dark";
 type Language = "zh" | "en";
+
+function memoDraftState(value: string) {
+  const chars = Array.from(value).length;
+  const lines = value.length === 0 ? 0 : value.split(/\r\n|\r|\n/).length;
+  const tooLong = chars > memoBodyMaxChars;
+  const tooManyLines = lines > memoBodyMaxLines;
+  return {
+    chars,
+    lines,
+    tooLong,
+    tooManyLines,
+    valid: Boolean(value.trim()) && !tooLong && !tooManyLines
+  };
+}
+
+function memoLimitText(state: ReturnType<typeof memoDraftState>) {
+  return `${state.chars}/${memoBodyMaxChars} · ${state.lines}/${memoBodyMaxLines} 行`;
+}
 
 type Preferences = {
   displayName: string;
@@ -751,9 +772,12 @@ const zhText: Record<string, string> = {
   agentTitle: "接入 Agent",
   agentSubtitle: "把 humen-mcp 添加到 Codex、Claude Code 或任何支持 MCP 的 Agent 软件。",
   secretMcp: "此 MCP 服务器强制要求 Agent Secret。",
+  fullAgentSecret: "完整 Agent Secret",
   adminAgentSecret: "管理员：Secret 前缀",
+  adminSecretPrefix: "管理员前缀（只读）",
   agentSecretHelp: "最终 secret = 管理员前缀 + 你的个人 secret。管理员轮换前缀会让全部旧 secret 失效。",
   personalAgentSecret: "个人 Agent Secret",
+  personalSecretSuffix: "个人 Secret 后缀",
   allowAgentDirectory: "允许 Agent 查看整个人才库",
   allowAgentDirectoryRisk: "风险：开启后，任何拿到有效 secret 的 Agent 都可以搜索整个人才库，而不只看到自己的账号。",
   agentDirectoryVisibility: "Agent 人才库可见范围",
@@ -1037,9 +1061,12 @@ const enText: Record<string, string> = {
   agentTitle: "Connect Agent",
   agentSubtitle: "Add humen-mcp to Codex, Claude Code, or any MCP-capable agent.",
   secretMcp: "This MCP server always requires an Agent Secret.",
+  fullAgentSecret: "Full Agent Secret",
   adminAgentSecret: "Admin: Secret prefix",
+  adminSecretPrefix: "Admin prefix (read-only)",
   agentSecretHelp: "Final secret = admin prefix + your personal secret. Rotating the prefix invalidates every old secret.",
   personalAgentSecret: "Personal Agent Secret",
+  personalSecretSuffix: "Personal secret suffix",
   allowAgentDirectory: "Allow agents to see the whole talent pool",
   allowAgentDirectoryRisk: "Risk: when enabled, any agent with a valid secret can search the full talent pool instead of only its own account.",
   agentDirectoryVisibility: "Agent talent pool visibility",
@@ -3319,6 +3346,8 @@ function AgentCard({ agent, token, onChanged }: { agent: ConnectedAgent; token: 
   const unreadMessages = agent.pending_messages.filter((message) => !message.read_at);
   const ownerName = agent.owner_platform_name?.trim() || agent.owner_email;
   const ownerHome = /^[a-z0-9][a-z0-9-]{1,31}$/.test(ownerName) ? `/${encodeURIComponent(ownerName)}` : null;
+  const draftState = memoDraftState(draft);
+  const draftInvalid = draftState.tooLong || draftState.tooManyLines;
 
   async function post(path: string, body?: unknown) {
     setBusy(true);
@@ -3425,7 +3454,16 @@ function AgentCard({ agent, token, onChanged }: { agent: ConnectedAgent; token: 
             </div>
           </div>
         )}
-        <textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={t("agentAskMePlaceholder")} />
+        <textarea
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder={t("agentAskMePlaceholder")}
+          maxLength={memoBodyMaxChars + 200}
+        />
+        <div className={draftInvalid ? "fieldMeta error" : "fieldMeta"}>
+          <span>{memoLimitText(draftState)}</span>
+          {draftState.tooManyLines && <span>最多 {memoBodyMaxLines} 行</span>}
+        </div>
         <div className="userCardActions">
           {hasIncomingFriendRequest && (
             <button className="secondary small" onClick={acceptFriend} disabled={busy}>
@@ -3433,7 +3471,7 @@ function AgentCard({ agent, token, onChanged }: { agent: ConnectedAgent; token: 
             </button>
           )}
           {!isFriend && !hasIncomingFriendRequest && agent.relation_status !== "human_requested" && (
-            <button className="secondary small" onClick={requestFriend} disabled={busy}>
+            <button className="secondary small" onClick={requestFriend} disabled={busy || draftInvalid}>
               <UserPlus size={15} /> {t("requestAgentFriend")}
             </button>
           )}
@@ -3441,7 +3479,7 @@ function AgentCard({ agent, token, onChanged }: { agent: ConnectedAgent; token: 
           <button className="secondary small" onClick={() => setRatingOpen(!ratingOpen)} disabled={busy}>
             <Check size={15} /> {t("rateAgent")}
           </button>
-          <button className="primary small" onClick={sendAgentMemo} disabled={busy || !draft.trim()}>
+          <button className="primary small" onClick={sendAgentMemo} disabled={busy || !draftState.valid}>
             <MessageSquareText size={15} /> {t("requestAgentAskMe")}
           </button>
         </div>
@@ -3586,7 +3624,7 @@ function AgentView({
             <input value={serverName} readOnly onFocus={(event) => event.currentTarget.select()} />
           </label>
           <label className="copyField">
-            <span>Agent Secret</span>
+            <span>{t("fullAgentSecret")}</span>
             <input value={accessKey} readOnly onFocus={(event) => event.currentTarget.select()} />
           </label>
           <label className="copyField">
@@ -3606,11 +3644,14 @@ function AgentView({
             </div>
           </div>
           <label className="copyField">
-            <span>{t("adminAgentSecret")}</span>
+            <span>{t("adminSecretPrefix")}</span>
             <input value={access?.agent_secret_prefix ?? ""} readOnly onFocus={(event) => event.currentTarget.select()} />
           </label>
           <div className="agentSecretRow">
-            <input type="password" value={userSecretDraft} onChange={(event) => setUserSecretDraft(event.target.value)} placeholder="Personal secret suffix" />
+            <label className="agentSecretField">
+              <span>{t("personalSecretSuffix")}</span>
+              <input type="password" value={userSecretDraft} onChange={(event) => setUserSecretDraft(event.target.value)} placeholder={t("personalSecretSuffix")} />
+            </label>
             <button className="secondary" onClick={() => setUserSecretDraft(randomSecret().slice(0, 32))}>
               <RefreshCw size={17} /> {t("random")}
             </button>
@@ -3633,7 +3674,10 @@ function AgentView({
               </div>
             </div>
             <div className="agentSecretRow">
-              <input type="password" value={prefixDraft} onChange={(event) => setPrefixDraft(event.target.value)} placeholder="Global secret prefix" />
+              <label className="agentSecretField">
+                <span>{t("adminAgentSecret")}</span>
+                <input type="password" value={prefixDraft} onChange={(event) => setPrefixDraft(event.target.value)} placeholder={t("adminAgentSecret")} />
+              </label>
               <button className="secondary" onClick={() => setPrefixDraft(`humen-${randomSecret().slice(0, 18)}-`)}>
                 <RefreshCw size={17} /> {t("random")}
               </button>
@@ -3975,7 +4019,7 @@ function WebhookView({
                       <QrCode size={18} />
                       <strong>微信扫码登录</strong>
                     </div>
-                    <span className={`statusPill ${webhook.weixin_bot_token ? "onlineStatus" : ""}`}>
+                    <span className={`statusPill ${webhook.weixin_ready ? "onlineStatus" : ""}`}>
                       {weixinStatusLabel(webhook)}
                     </span>
                   </div>
@@ -3988,8 +4032,11 @@ function WebhookView({
                       </div>
                     )}
                     <div className="weixinLoginMeta">
-                      <p>{webhook.weixin_status_message || (webhook.weixin_bot_token ? "已登录" : "未登录")}</p>
+                      <p>{weixinStatusMessage(webhook)}</p>
                       {webhook.weixin_account_id && <code>{webhook.weixin_account_id}</code>}
+                      {webhook.weixin_bot_token && !webhook.weixin_ready && (
+                        <small className="warningText">还不能收到推送：请先在微信里给这个机器人发送任意一条消息。</small>
+                      )}
                       {webhook.weixin_last_seen_at && <small>最近收到消息：{formatTime(webhook.weixin_last_seen_at)}</small>}
                       {webhook.weixin_last_error && <small className="error">{webhook.weixin_last_error}</small>}
                     </div>
@@ -4038,13 +4085,21 @@ function WebhookView({
 }
 
 function weixinStatusLabel(webhook: WebhookConfig) {
-  if (webhook.weixin_bot_token) return "已登录";
+  if (webhook.weixin_ready) return "可投递";
+  if (webhook.weixin_bot_token) return "待首条消息";
   const status = (webhook.weixin_status ?? "").toLowerCase();
   if (status === "scaned" || status === "scanned") return "待确认";
   if (status === "wait" || status === "waiting") return "待扫码";
   if (status === "expired") return "已过期";
   if (status === "logged_out") return "未登录";
   return status || "未登录";
+}
+
+function weixinStatusMessage(webhook: WebhookConfig) {
+  if (webhook.weixin_status_message) return webhook.weixin_status_message;
+  if (webhook.weixin_ready) return "微信通知已就绪，可接收并回复 MCP 请求";
+  if (webhook.weixin_bot_token) return "已扫码登录。请先向这个机器人发送任意一条微信消息，以完成通知绑定。";
+  return "未登录";
 }
 
 function AdminView({
@@ -5177,6 +5232,7 @@ function UserCard({
   const canReview = Boolean(token) && !isSelf;
   const githubUrl = githubProfileUrl(profile);
   const homePath = profileHomePath(profile);
+  const memoState = memoDraftState(memoDraft);
 
   useEffect(() => {
     setMemos([]);
@@ -5346,8 +5402,17 @@ function UserCard({
               ))}
               {memos.length === 0 && <small>{t("noMemos")}</small>}
             </div>
-            <textarea value={memoDraft} onChange={(event) => setMemoDraft(event.target.value)} placeholder={t("memoPlaceholder")} />
-            <button className="primary small" onClick={submitMemo} disabled={busy || !memoDraft.trim()}>
+            <textarea
+              value={memoDraft}
+              onChange={(event) => setMemoDraft(event.target.value)}
+              placeholder={t("memoPlaceholder")}
+              maxLength={memoBodyMaxChars + 200}
+            />
+            <div className={memoState.tooLong || memoState.tooManyLines ? "fieldMeta error" : "fieldMeta"}>
+              <span>{memoLimitText(memoState)}</span>
+              {memoState.tooManyLines && <span>最多 {memoBodyMaxLines} 行</span>}
+            </div>
+            <button className="primary small" onClick={submitMemo} disabled={busy || !memoState.valid}>
               <MessageSquareText size={15} /> {t("sendMemo")}
             </button>
           </div>

@@ -198,6 +198,9 @@ textarea.note, .compactNote { min-height: 84px; }
 .statusPill.taskStatus-archived { color: var(--app-muted); }
 .countdown { color: var(--app-text); font-variant-numeric: tabular-nums; font-weight: 800; }
 :where(.countdown.urgent, .countdown.expired, .error, .dangerText) { color: var(--mantine-color-red-6); }
+.warningText { color: var(--mantine-color-yellow-7); }
+.fieldMeta { display: flex; justify-content: space-between; gap: 10px; color: var(--app-muted); font-size: 12px; font-weight: 700; }
+.fieldMeta.error { color: var(--mantine-color-red-6); }
 
 .imagePreview { max-width: 760px; margin: 0; overflow: hidden; border: 1px solid var(--app-border); border-radius: 6px; background: var(--app-soft); }
 .imagePreview img { display: block; width: 100%; max-height: 420px; object-fit: contain; }
@@ -230,7 +233,7 @@ textarea.note, .compactNote { min-height: 84px; }
 .reputationBadge.compact { width: fit-content; min-width: 0; max-width: 100%; padding: 6px 9px; border: 1px solid var(--app-border); border-radius: 6px; background: var(--app-soft); }
 .reputationDetails { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--app-muted); font-size: 12px; font-weight: 700; }
 
-:where(.searchBox, .profileForm label, .copyField, .settingsGrid label, .passkeyAddRow label, .oauthCardGrid label, .githubTokenGrid label, .webhookHelpField, .banUntil) { display: grid; gap: 6px; }
+:where(.searchBox, .profileForm label, .copyField, .settingsGrid label, .passkeyAddRow label, .oauthCardGrid label, .githubTokenGrid label, .webhookHelpField, .banUntil, .agentSecretField) { display: grid; gap: 6px; }
 .searchBox { min-width: min(360px, 100%); }
 .tagStrip, .tagCloud, .oauthPresetRow, .docLinks, .oauthActions, .oauthAddRow { display: flex; flex-wrap: wrap; gap: 8px; }
 :where(.tagStrip button, .tagCloud button) { min-height: 32px; padding: 0 10px; }
@@ -282,7 +285,7 @@ pre code { padding: 0; border-radius: 0; background: transparent; color: inherit
 .securityConfigPanel li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: start; color: var(--app-text); font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
 .securityConfigPanel li svg { margin-top: 2px; color: var(--app-accent); }
 :where(.agentSecretRow, .githubTokenGrid, .passkeyAddRow, .introAddRow) { display: flex; gap: 10px; }
-.agentSecretRow input, .githubTokenGrid label, .passkeyAddRow label, .introAddRow label { flex: 1; min-width: 220px; }
+.agentSecretRow input, .agentSecretField, .githubTokenGrid label, .passkeyAddRow label, .introAddRow label { flex: 1; min-width: 220px; }
 .copyField input[readonly], .oauthCardGrid input[readonly] { color: var(--app-muted); }
 .githubTokenStatus.configured { color: var(--app-primary); }
 .webhookList { grid-template-columns: 1fr; }
