@@ -144,7 +144,10 @@ textarea.note, .compactNote { min-height: 84px; }
 :where(.topbarAction, .avatarButton) { padding: 0 10px; }
 .langButton { font-size: 12px; }
 .topbarLead { gap: 8px; }
-.topbarLead .mode { min-height: 30px; padding: 0 10px; border: 1px solid var(--app-border); border-radius: 999px; background: color-mix(in srgb, var(--app-elevated) 64%, transparent); color: var(--app-muted); }
+.topbarLead .mode, .liveStatus { min-height: 30px; padding: 0 10px; border: 1px solid var(--app-border); border-radius: 999px; background: color-mix(in srgb, var(--app-elevated) 64%, transparent); color: var(--app-muted); }
+.liveStatus { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mantine-font-family-monospace); font-size: 12px; font-weight: 800; }
+.liveStatus::before { content: ""; width: 7px; height: 7px; border-radius: 999px; background: var(--mantine-color-yellow-6); }
+.liveStatus.connected::before { background: var(--app-accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--app-accent) 12%, transparent); }
 .topbar .sourceLink { min-height: 34px; color: var(--app-primary-strong); }
 .topbarAction { min-height: 34px; color: var(--app-muted); }
 .avatarButton { min-height: 38px; padding-left: 8px; border-color: color-mix(in srgb, var(--app-primary) 24%, var(--app-border)); background: color-mix(in srgb, var(--app-elevated) 92%, var(--app-primary-soft)); }

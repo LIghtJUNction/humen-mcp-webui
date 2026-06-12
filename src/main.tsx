@@ -1252,6 +1252,7 @@ function App({ preferences, setPreferences }: AppProps) {
   const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [onlineCount, setOnlineCount] = useState(0);
+  const [liveStatus, setLiveStatus] = useState<"connecting" | "connected" | "reconnecting">("connecting");
   const [memoUnread, setMemoUnread] = useState<HumanMemoUnreadSummary>({ total: 0, sources: [] });
   const [memoRefreshSeq, setMemoRefreshSeq] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -1292,9 +1293,14 @@ function App({ preferences, setPreferences }: AppProps) {
 
   useEffect(() => {
     if (!user) return;
+    let closed = false;
+    let reconnectTimer: number | undefined;
+    let reconnectDelay = 1000;
+    let ws: WebSocket | null = null;
+
     refreshAll();
-    const ws = new WebSocket(wsPath(token));
-    ws.onmessage = (event) => {
+
+    const handleMessage = (event: MessageEvent<string>) => {
       const message = JSON.parse(event.data);
       if (message.type === "snapshot") {
         setRequests(sortRequests(message.requests ?? []));
@@ -1337,7 +1343,34 @@ function App({ preferences, setPreferences }: AppProps) {
         refreshLeaderboard(token, setLeaderboard);
       }
     };
-    return () => ws.close();
+
+    const connect = () => {
+      if (closed) return;
+      setLiveStatus(reconnectDelay === 1000 ? "connecting" : "reconnecting");
+      ws = new WebSocket(wsPath(token));
+      ws.onopen = () => {
+        reconnectDelay = 1000;
+        setLiveStatus("connected");
+        refreshAll();
+      };
+      ws.onmessage = handleMessage;
+      ws.onerror = () => {
+        ws?.close();
+      };
+      ws.onclose = () => {
+        if (closed) return;
+        setLiveStatus("reconnecting");
+        reconnectTimer = window.setTimeout(connect, reconnectDelay);
+        reconnectDelay = Math.min(reconnectDelay * 2, 10000);
+      };
+    };
+
+    connect();
+    return () => {
+      closed = true;
+      if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      ws?.close();
+    };
   }, [token, user]);
 
   useEffect(() => {
@@ -1488,6 +1521,7 @@ function App({ preferences, setPreferences }: AppProps) {
           isAdmin={isAdmin}
           onSettings={() => setView("settings")}
           onLogout={() => logout(setToken, setUser, setRequests, setTasks, setSent, setTrash, setWebhooks)}
+          liveStatus={liveStatus}
         />
         {view === "inbox" && (selected ? (
           <TaskPanel request={selected} token={token} now={now} afterSubmit={() => setSelectedId(null)} />
@@ -2693,7 +2727,8 @@ function TopBar({
   setPreferences,
   isAdmin,
   onSettings,
-  onLogout
+  onLogout,
+  liveStatus
 }: {
   user: User;
   preferences: Preferences;
@@ -2701,12 +2736,16 @@ function TopBar({
   isAdmin: boolean;
   onSettings: () => void;
   onLogout: () => void;
+  liveStatus: "connecting" | "connected" | "reconnecting";
 }) {
   const displayName = preferences.displayName.trim() || user.email;
   return (
     <header className="topbar">
       <div className="topbarLead">
         <span className="mode">{isAdmin ? t("administrator") : t("human")}</span>
+        <span className={`liveStatus ${liveStatus}`}>
+          {liveStatus === "connected" ? (currentLanguage() === "zh" ? "实时已连接" : "Live") : (currentLanguage() === "zh" ? "正在重连" : "Reconnecting")}
+        </span>
         <SourceLink />
       </div>
       <div className="userMenu">
