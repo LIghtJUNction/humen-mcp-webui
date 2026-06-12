@@ -526,7 +526,7 @@ const zhText: Record<string, string> = {
   refresh: "刷新",
   inbox: "收件箱",
   tasks: "任务",
-  sent: "成功发送",
+  sent: "已回复",
   trash: "回收站",
   directory: "人才库",
   leaderboard: "排行榜",
@@ -538,8 +538,11 @@ const zhText: Record<string, string> = {
   security: "安全",
   sourceCode: "GitHub 源代码",
   noPending: "暂无待处理信封",
+  recentAnsweredHint: "最近的请求已被其他通道处理",
+  openAnswered: "查看已回复",
+  answeredBy: "回复来源",
   noTasks: "暂无 AI 创建的任务",
-  sentEmpty: "暂无成功发送",
+  sentEmpty: "暂无回复记录",
   trashEmpty: "回收站为空",
   noExpired: "没有过期信封",
   waiting: "等待 agent 请求",
@@ -815,7 +818,7 @@ const enText: Record<string, string> = {
   refresh: "Refresh",
   inbox: "Inbox",
   tasks: "Tasks",
-  sent: "Sent",
+  sent: "Answered",
   trash: "Trash",
   directory: "Talent Pool",
   leaderboard: "Leaderboard",
@@ -827,8 +830,11 @@ const enText: Record<string, string> = {
   security: "Security",
   sourceCode: "GitHub source",
   noPending: "No pending envelopes",
+  recentAnsweredHint: "A recent request was handled from another channel",
+  openAnswered: "Open answered",
+  answeredBy: "Answered by",
   noTasks: "No AI-created tasks",
-  sentEmpty: "No sent replies",
+  sentEmpty: "No answered requests",
   trashEmpty: "Trash is empty",
   noExpired: "No expired envelopes",
   waiting: "Waiting for agent requests",
@@ -1258,6 +1264,7 @@ function App({ preferences, setPreferences }: AppProps) {
     () => requests.find((request) => request.id === selectedId) ?? requests[0] ?? null,
     [requests, selectedId]
   );
+  const latestAnswered = sent[0] ?? null;
   const activeTaskCount = useMemo(() => tasks.filter((task) => task.status !== "done" && task.status !== "archived").length, [tasks]);
   const unreadAgentMessages = useMemo(
     () => agents.filter((agent) => agent.pending_messages.some((message) => !message.read_at)).length,
@@ -1412,7 +1419,9 @@ function App({ preferences, setPreferences }: AppProps) {
                 onClick={() => setSelectedId(request.id)}
               />
             ))}
-            {requests.length === 0 && <div className="empty">{t("noPending")}</div>}
+            {requests.length === 0 && (
+              <InboxEmptyState latestAnswered={latestAnswered} onOpenAnswered={() => setView("sent")} compact />
+            )}
           </div>
         )}
 
@@ -1423,7 +1432,7 @@ function App({ preferences, setPreferences }: AppProps) {
                 <Send size={18} />
                 <span>
                   <strong>{entry.request.title}</strong>
-                  <small>{formatTime(entry.answer.answered_at)}</small>
+                  <small>{answerSourceLabel(entry.answer.answered_by)} · {formatTime(entry.answer.answered_at)}</small>
                 </span>
               </button>
             ))}
@@ -1480,7 +1489,11 @@ function App({ preferences, setPreferences }: AppProps) {
           onSettings={() => setView("settings")}
           onLogout={() => logout(setToken, setUser, setRequests, setTasks, setSent, setTrash, setWebhooks)}
         />
-        {view === "inbox" && (selected ? <TaskPanel request={selected} token={token} now={now} afterSubmit={() => setSelectedId(null)} /> : <Blank />)}
+        {view === "inbox" && (selected ? (
+          <TaskPanel request={selected} token={token} now={now} afterSubmit={() => setSelectedId(null)} />
+        ) : (
+          <InboxEmptyState latestAnswered={latestAnswered} onOpenAnswered={() => setView("sent")} />
+        ))}
         {view === "tasks" && <AgentTasksView tasks={tasks} token={token} setTasks={setTasks} />}
         {view === "sent" && <SentView sent={sent} token={token} setSent={setSent} />}
         {view === "trash" && <TrashView trash={trash} token={token} setTrash={setTrash} />}
@@ -2648,6 +2661,32 @@ function EnvelopeButton({ request, now, active, onClick }: { request: HumanReque
   );
 }
 
+function InboxEmptyState({
+  latestAnswered,
+  onOpenAnswered,
+  compact = false
+}: {
+  latestAnswered: AnsweredRequest | null;
+  onOpenAnswered: () => void;
+  compact?: boolean;
+}) {
+  if (!latestAnswered) {
+    return <div className={compact ? "empty compactEmpty" : "empty"}>{t("noPending")}</div>;
+  }
+  return (
+    <div className={compact ? "empty compactEmpty inboxEmptyState" : "empty inboxEmptyState"}>
+      <strong>{t("noPending")}</strong>
+      <span>{t("recentAnsweredHint")}</span>
+      <small>
+        {latestAnswered.request.title} · {answerSourceLabel(latestAnswered.answer.answered_by)} · {formatTime(latestAnswered.answer.answered_at)}
+      </small>
+      <button className="secondary small" onClick={onOpenAnswered}>
+        <Send size={15} /> {t("openAnswered")}
+      </button>
+    </div>
+  );
+}
+
 function TopBar({
   user,
   preferences,
@@ -2824,7 +2863,7 @@ function SentView({ sent, token, setSent }: { sent: AnsweredRequest[]; token: st
             <p>{entry.answer.answer}</p>
             {entry.answer.note && <small>{entry.answer.note}</small>}
             <div className="metaRow">
-              <span>{entry.answer.answered_by}</span>
+              <span>{t("answeredBy")}: {answerSourceLabel(entry.answer.answered_by)}</span>
               <span>{formatTime(entry.answer.answered_at)}</span>
               {entry.answered_late && <span>{t("expired")}</span>}
             </div>
@@ -2835,6 +2874,16 @@ function SentView({ sent, token, setSent }: { sent: AnsweredRequest[]; token: st
       </div>
     </section>
   );
+}
+
+function answerSourceLabel(answeredBy: string) {
+  if (answeredBy.startsWith("wechat:")) {
+    return currentLanguage() === "zh" ? "微信" : "WeChat";
+  }
+  if (answeredBy.startsWith("web:")) {
+    return currentLanguage() === "zh" ? "网页" : "Web";
+  }
+  return answeredBy;
 }
 
 function TrashView({ trash, token, setTrash }: { trash: ExpiredRequest[]; token: string; setTrash: (trash: ExpiredRequest[]) => void }) {

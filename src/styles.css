@@ -213,6 +213,9 @@ textarea.note, .compactNote { min-height: 84px; }
 
 .blank, .empty { display: grid; place-items: center; min-height: 120px; padding: 18px; text-align: center; }
 .compactEmpty { min-height: 72px; }
+.inboxEmptyState { gap: 8px; align-content: center; }
+.inboxEmptyState strong { color: var(--app-text); }
+.inboxEmptyState small { max-width: 100%; overflow: hidden; color: var(--app-muted); text-overflow: ellipsis; white-space: nowrap; }
 .gridList { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
 .leaderboardStats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 :where(.metricPanel strong, .leaderMetrics strong) { display: block; color: var(--app-text); font-size: 22px; }
