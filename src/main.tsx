@@ -376,19 +376,19 @@ type Preferences = {
 const defaultPreferences: Preferences = {
   displayName: "",
   avatarText: "",
-  avatarColor: "#2e7a55",
+  avatarColor: "#0066ff",
   theme: "light",
   language: "zh",
   compact: false
 };
 
 const theme = createTheme({
-  primaryColor: "teal",
-  defaultRadius: "md",
+  primaryColor: "blue",
+  defaultRadius: "xs",
   fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   headings: {
     fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    fontWeight: "800"
+    fontWeight: "900"
   }
 });
 

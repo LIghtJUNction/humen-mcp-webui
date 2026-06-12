@@ -1,55 +1,68 @@
 :root {
-  --app-bg: #fafafa;
+  --app-bg: #ffffff;
   --app-surface: #fff;
-  --app-soft: #f4f4f5;
-  --app-muted: #6b7280;
-  --app-text: #111827;
-  --app-border: #e5e7eb;
-  --app-primary: #111827;
-  --app-primary-soft: rgba(17, 24, 39, 0.05);
-  --app-info-soft: rgba(17, 24, 39, 0.03);
+  --app-soft: #f6f8fa;
+  --app-muted: #586069;
+  --app-text: #0f1419;
+  --app-border: #d0d7de;
+  --app-strong-border: #0f1419;
+  --app-primary: #0066ff;
+  --app-primary-soft: rgba(0, 102, 255, 0.08);
+  --app-info-soft: rgba(9, 105, 218, 0.06);
   --app-danger-soft: var(--mantine-color-red-0);
   --app-warning-soft: var(--mantine-color-yellow-0);
-  --app-accent: #10b981;
-  --app-shadow: 0 1px 3px rgba(17, 24, 39, 0.06);
+  --app-accent: #00a884;
+  --app-shadow: 0 1px 0 rgba(15, 20, 25, 0.08);
   color: var(--app-text);
   color-scheme: light;
   font-family: var(--mantine-font-family);
 }
 
 [data-theme="dark"] {
-  --app-bg: #0b0c0f;
-  --app-surface: #111318;
-  --app-soft: #17191f;
-  --app-muted: #9ca3af;
-  --app-text: #f9fafb;
-  --app-border: #2a2f39;
-  --app-primary: #f9fafb;
-  --app-primary-soft: rgba(249, 250, 251, 0.08);
-  --app-info-soft: rgba(249, 250, 251, 0.04);
+  --app-bg: #0d1117;
+  --app-surface: #161b22;
+  --app-soft: #0d1117;
+  --app-muted: #8b949e;
+  --app-text: #f0f6fc;
+  --app-border: #30363d;
+  --app-strong-border: #f0f6fc;
+  --app-primary: #58a6ff;
+  --app-primary-soft: rgba(88, 166, 255, 0.14);
+  --app-info-soft: rgba(88, 166, 255, 0.08);
   --app-danger-soft: rgba(250, 82, 82, 0.16);
   --app-warning-soft: rgba(250, 176, 5, 0.16);
-  --app-accent: #34d399;
-  --app-shadow: 0 1px 3px rgba(0, 0, 0, 0.36);
+  --app-accent: #3fb950;
+  --app-shadow: 0 1px 0 rgba(240, 246, 252, 0.08);
   color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; min-height: 100vh; overflow-x: hidden; background: var(--app-bg); color: var(--app-text); }
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--app-border) 34%, transparent) 1px, transparent 1px),
+    linear-gradient(0deg, color-mix(in srgb, var(--app-border) 28%, transparent) 1px, transparent 1px),
+    var(--app-bg);
+  background-size: 36px 36px, 36px 36px, auto;
+  color: var(--app-text);
+}
 #root { min-height: 100vh; }
 button, input, textarea, select { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: 0.55; }
 h1, h2, h3, p { margin: 0; }
-h1 { font-size: 21px; line-height: 1.1; }
-h2 { font-size: 24px; line-height: 1.2; }
-h3 { font-size: 15px; }
-a { color: inherit; }
+h1 { font-size: 22px; line-height: 1.1; font-weight: 900; letter-spacing: 0; }
+h2 { font-size: 26px; line-height: 1.15; font-weight: 900; letter-spacing: 0; }
+h3 { font-size: 15px; font-weight: 900; letter-spacing: 0; }
+a { color: var(--app-primary); text-decoration-thickness: 1px; text-underline-offset: 3px; }
 
 :where(input, textarea, select) {
   width: 100%;
   border: 1px solid var(--app-border);
-  border-radius: var(--mantine-radius-md);
+  border-radius: 6px;
   background: var(--app-surface);
   color: var(--app-text);
   outline: none;
@@ -58,13 +71,14 @@ a { color: inherit; }
 :where(input, select) { min-height: 40px; padding: 0 11px; }
 textarea { min-height: 132px; padding: 11px; line-height: 1.5; resize: vertical; }
 textarea.note, .compactNote { min-height: 84px; }
-:where(input, textarea, select, button, a):focus-visible { outline: 2px solid var(--app-primary); outline-offset: 2px; }
+:where(input, textarea, select):focus { border-color: var(--app-primary); box-shadow: inset 0 0 0 1px var(--app-primary); }
+:where(input, textarea, select, button, a):focus-visible { outline: 3px solid color-mix(in srgb, var(--app-primary) 30%, transparent); outline-offset: 2px; }
 .hidden { display: none !important; }
 
-.shell { display: grid; grid-template-columns: minmax(280px, 340px) 1fr; min-height: 100vh; }
-.sidebar { display: flex; flex-direction: column; gap: 14px; height: 100vh; min-height: 0; overflow-y: auto; padding: 18px; border-right: 1px solid var(--app-border); background: var(--app-surface); }
+.shell { display: grid; grid-template-columns: minmax(280px, 340px) 1fr; min-height: 100vh; background: color-mix(in srgb, var(--app-surface) 88%, transparent); }
+.sidebar { display: flex; flex-direction: column; gap: 14px; height: 100vh; min-height: 0; overflow-y: auto; padding: 18px; border-right: 1px solid var(--app-strong-border); background: var(--app-surface); }
 .workspace { display: grid; grid-template-rows: auto 1fr; min-width: 0; }
-.topbar { position: sticky; top: 0; z-index: 10; min-height: 64px; padding: 12px 24px; border-bottom: 1px solid var(--app-border); background: color-mix(in srgb, var(--app-surface) 92%, transparent); backdrop-filter: blur(12px); }
+.topbar { position: sticky; top: 0; z-index: 10; min-height: 64px; padding: 12px 24px; border-bottom: 1px solid var(--app-strong-border); background: color-mix(in srgb, var(--app-surface) 94%, transparent); backdrop-filter: blur(12px); }
 
 :where(.brand, .topbar, .taskHeader, .task footer, .pageTitle, .panelHead, .cardHead, .metaRow, .userMenu, .rowActions, .tagRow, .panelTitle, .topbarLead, .loginHead, .loginPanelHead, .brandLockup, .leaderIdentity, .leaderMetrics, .relationStrip, .publicBoardHead, .publicBoard li, .exampleList div, .userCardTitle, .userCardActions, .userMetaGrid, .reviewBox, .toggleRow, .copyField, .profileToggle, .banUntil, .userRow, .userEdit, .weixinLoginHead > div, .directoryFilters) {
   display: flex;
@@ -77,7 +91,7 @@ textarea.note, .compactNote { min-height: 84px; }
 .brand { padding-bottom: 14px; border-bottom: 1px solid var(--app-border); }
 :where(.brand > div, .brandLockup, .panelTitle, .topbarLead, .leaderIdentity) { min-width: 0; }
 :where(.brandLockup h1, .navLabel, .requestItem strong, .requestItem small) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.appLogo { width: 34px; height: 34px; flex: 0 0 auto; border-radius: var(--mantine-radius-md); }
+.appLogo { width: 34px; height: 34px; flex: 0 0 auto; border-radius: 6px; border: 1px solid var(--app-strong-border); background: var(--app-surface); }
 
 :where(.brand p, .mode, .requestItem small, .empty, .blank, .listCard small, .userCard p, .metaRow, .frontendVersion, .pageTitle p, .panelHead p, .introHeader p, .introCard p, .introPanel p, .publicBoard em, .weixinLoginMeta small, .leaderMetrics span, .introCodeLine, .inlineStatus, .loginHeroCopy p, .loginNotice, .publicBoardEmpty) {
   color: var(--app-muted);
@@ -96,22 +110,26 @@ textarea.note, .compactNote { min-height: 84px; }
   gap: 8px;
   min-height: 38px;
   border: 1px solid var(--app-border);
-  border-radius: var(--mantine-radius-md);
+  border-radius: 6px;
   background: var(--app-surface);
   color: var(--app-text);
   text-decoration: none;
   font-weight: 700;
 }
 
-:where(.primary, .oauth) { border-color: var(--app-primary); background: var(--app-primary); color: var(--app-bg); }
+:where(.sourceLink, .primary, .secondary, .oauth, .topbarAction, .navButton, .tagPill, .tagRow span, .statusPill, .mode, .loginHeroMetrics span, .loginPrimaryAuth > span, .consoleRow, .frontendVersion) {
+  font-family: var(--mantine-font-family-monospace);
+}
+
+:where(.primary, .oauth) { border-color: var(--app-strong-border); background: var(--app-text); color: var(--app-bg); }
 :where(.primary svg, .oauth svg) { color: currentColor; }
-:where(.secondary:hover, .sourceLink:hover, .topbarAction:hover, .iconButton:hover, .avatarButton:hover, .tagStrip button:hover, .tagCloud button:hover, .addWebhookButton:hover) { border-color: var(--app-primary); background: var(--app-soft); }
+:where(.secondary:hover, .sourceLink:hover, .topbarAction:hover, .iconButton:hover, .avatarButton:hover, .tagStrip button:hover, .tagCloud button:hover, .addWebhookButton:hover) { border-color: var(--app-primary); background: var(--app-primary-soft); color: var(--app-primary); }
 :where(.primary, .secondary, .oauth, .sourceLink) { padding: 0 13px; }
 :where(.secondary.small, .primary.small) { min-height: 32px; padding: 0 10px; font-size: 12px; }
 .iconButton { width: 38px; padding: 0; }
 :where(.topbarAction, .avatarButton) { padding: 0 10px; }
 .langButton { font-size: 12px; }
-.avatarButton span, .avatarCircle { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; background: var(--app-primary); color: var(--app-surface); font-size: 12px; font-weight: 800; }
+.avatarButton span, .avatarCircle { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; background: var(--app-primary); color: #fff; font-size: 12px; font-weight: 800; }
 .avatarButton small { display: grid; line-height: 1.1; text-align: left; }
 .avatarButton small strong { color: var(--app-muted); font-size: 10px; text-transform: uppercase; }
 
@@ -121,7 +139,7 @@ textarea.note, .compactNote { min-height: 84px; }
 }
 
 .requestList { flex: 1 1 160px; min-height: 0; align-content: start; overflow: auto; }
-.navButton { display: grid; grid-template-columns: 22px 1fr auto; justify-content: stretch; min-height: 42px; min-width: 0; padding: 8px 10px; text-align: left; }
+.navButton { display: grid; grid-template-columns: 22px 1fr auto; justify-content: stretch; min-height: 42px; min-width: 0; padding: 8px 10px; text-align: left; border-color: transparent; }
 .navLabel { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
 .unreadDot { display: inline-block; width: 9px; height: 9px; flex: 0 0 auto; border: 2px solid var(--app-surface); border-radius: 999px; background: var(--mantine-color-red-6); box-shadow: 0 0 0 1px color-mix(in srgb, var(--mantine-color-red-6) 42%, transparent); }
 :where(.navButton strong, .tagPill, .tagRow span, .statusPill) { background: var(--app-soft); color: var(--app-text); }
@@ -142,12 +160,13 @@ textarea.note, .compactNote { min-height: 84px; }
 
 :where(.panel, .task, .listCard, .userCard, .metricPanel, .leaderboardRow, .oauthCard, .introCard, .introPanel, .publicBoard, .requestPreviewPanel, .loginPanel, .handoffStep, .passkeyItem, .securityStatusCard, .relationItem, .reportItem, .weixinLoginBox, .onboardingBox, .notice) {
   border: 1px solid var(--app-border);
-  border-radius: var(--mantine-radius-md);
+  border-radius: 6px;
   background: var(--app-surface);
   box-shadow: var(--app-shadow);
 }
 
 :where(.panel, .listCard, .userCard, .metricPanel, .leaderboardRow, .oauthCard, .introCard, .introPanel, .publicBoard, .passkeyItem, .securityStatusCard, .relationItem, .reportItem, .weixinLoginBox, .onboardingBox) { padding: 16px; }
+.pageTitle h2, .introHeader h2, .introPanel h2, .loginHeroCopy h2 { color: var(--app-text); }
 .pageTitle, .panelHead { align-items: flex-start; }
 .metaRow { font-size: 13px; }
 :where(.metaRow span, .status, .statusPill, .tagPill, .tagRow span) { display: inline-flex; align-items: center; gap: 5px; }
@@ -157,7 +176,7 @@ textarea.note, .compactNote { min-height: 84px; }
 .countdown { color: var(--app-text); font-variant-numeric: tabular-nums; font-weight: 800; }
 :where(.countdown.urgent, .countdown.expired, .error, .dangerText) { color: var(--mantine-color-red-6); }
 
-.imagePreview { max-width: 760px; margin: 0; overflow: hidden; border: 1px solid var(--app-border); border-radius: var(--mantine-radius-md); background: var(--app-soft); }
+.imagePreview { max-width: 760px; margin: 0; overflow: hidden; border: 1px solid var(--app-border); border-radius: 6px; background: var(--app-soft); }
 .imagePreview img { display: block; width: 100%; max-height: 420px; object-fit: contain; }
 :where(.steps, .compactSteps, .guideBody ol, .guideBody ul) { margin: 0; padding-left: 24px; line-height: 1.55; }
 .choices { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); max-width: 760px; }
@@ -185,7 +204,7 @@ textarea.note, .compactNote { min-height: 84px; }
 .rankBadge { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 999px; background: var(--app-primary-soft); color: var(--app-primary); font-weight: 800; }
 .reputationBadge { display: grid; gap: 2px; min-width: 138px; max-width: 220px; align-content: center; }
 .metaRow .reputationBadge { min-width: min(210px, 100%); }
-.reputationBadge.compact { width: fit-content; min-width: 0; max-width: 100%; padding: 6px 9px; border: 1px solid var(--app-border); border-radius: var(--mantine-radius-md); background: var(--app-soft); }
+.reputationBadge.compact { width: fit-content; min-width: 0; max-width: 100%; padding: 6px 9px; border: 1px solid var(--app-border); border-radius: 6px; background: var(--app-soft); }
 .reputationDetails { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--app-muted); font-size: 12px; font-weight: 700; }
 
 :where(.searchBox, .profileForm label, .copyField, .settingsGrid label, .passkeyAddRow label, .oauthCardGrid label, .githubTokenGrid label, .webhookHelpField, .banUntil) { display: grid; gap: 6px; }
@@ -195,13 +214,15 @@ textarea.note, .compactNote { min-height: 84px; }
 :where(.relationPanel, .agentPage, .adminPage, .accountPanel, .personalizationPanel, .passkeyPanel) { display: grid; gap: 14px; }
 .relationStrip > div { display: contents; }
 code, pre, .introCodeLine code, .exampleList code, .oauthCallbackHint code, .weixinLoginMeta code { font-family: var(--mantine-font-family-monospace); }
-pre { overflow: auto; margin: 0; padding: 14px; border-radius: var(--mantine-radius-md); background: var(--app-soft); line-height: 1.5; white-space: pre-wrap; }
+code { padding: 1px 4px; border-radius: 4px; background: var(--app-soft); color: var(--app-primary); }
+pre { overflow: auto; margin: 0; padding: 14px; border: 1px solid var(--app-border); border-radius: 6px; background: var(--app-soft); line-height: 1.5; white-space: pre-wrap; }
+pre code { padding: 0; border-radius: 0; background: transparent; color: inherit; }
 :where(.reviewBox, .onboardingBox, .oauthCallbackHint, .agentPolicySummary, .guideWarning, .notice) { padding: 12px; background: var(--app-soft); }
 .notice { box-shadow: none; }
 .memoBoard { display: grid; gap: 10px; }
 .memoBoardHead { display: flex; align-items: center; gap: 8px; color: var(--mantine-color-red-6); font-size: 12px; }
 .memoList { display: grid; gap: 8px; max-height: 220px; overflow: auto; }
-.memoItem { display: grid; gap: 4px; padding: 10px; border: 1px solid var(--app-border); border-radius: var(--mantine-radius-md); background: var(--app-surface); }
+.memoItem { display: grid; gap: 4px; padding: 10px; border: 1px solid var(--app-border); border-radius: 6px; background: var(--app-surface); }
 .memoItem.unread { border-color: color-mix(in srgb, var(--mantine-color-red-6) 54%, var(--app-border)); background: color-mix(in srgb, var(--app-danger-soft) 36%, var(--app-surface)); }
 .memoItem p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .memoItem small { color: var(--app-muted); }
@@ -211,7 +232,7 @@ pre { overflow: auto; margin: 0; padding: 14px; border-radius: var(--mantine-rad
 .publicProfilePage { width: min(900px, calc(100vw - 32px)); margin: 0 auto 48px; display: grid; gap: 18px; }
 .publicProfilePage .gridList { grid-template-columns: minmax(0, 1fr); }
 
-.segmented { display: inline-flex; width: fit-content; max-width: 100%; overflow-x: auto; border: 1px solid var(--app-border); border-radius: var(--mantine-radius-md); background: var(--app-surface); }
+.segmented { display: inline-flex; width: fit-content; max-width: 100%; overflow-x: auto; border: 1px solid var(--app-border); border-radius: 6px; background: var(--app-surface); }
 .segmented button { min-height: 36px; flex: 0 0 auto; border: 0; border-radius: 0; padding: 0 12px; white-space: nowrap; }
 .toggleRow { justify-content: space-between; }
 .toggleRow input, input[type="checkbox"] { width: auto; min-height: auto; accent-color: var(--app-primary); }
@@ -229,7 +250,7 @@ pre { overflow: auto; margin: 0; padding: 14px; border-radius: var(--mantine-rad
 .securityStatusCard span { color: var(--app-muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
 .securityStatusCard strong { display: block; margin-top: 4px; color: var(--app-text); font-size: 21px; line-height: 1.15; }
 .securityStatusCard p { margin-top: 8px; color: var(--app-muted); font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
-.securityStatusIcon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: var(--mantine-radius-md); background: var(--app-soft); color: var(--app-primary); }
+.securityStatusIcon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 6px; background: var(--app-soft); color: var(--app-primary); }
 .securityStatusCard.ok { border-color: color-mix(in srgb, var(--app-accent) 42%, var(--app-border)); }
 .securityStatusCard.ok .securityStatusIcon { background: color-mix(in srgb, var(--app-accent) 16%, var(--app-soft)); color: var(--app-accent); }
 .securityStatusCard.warning { border-color: color-mix(in srgb, var(--mantine-color-yellow-6) 46%, var(--app-border)); background: color-mix(in srgb, var(--app-warning-soft) 24%, var(--app-surface)); }
@@ -244,89 +265,129 @@ pre { overflow: auto; margin: 0; padding: 14px; border-radius: var(--mantine-rad
 .webhookList { grid-template-columns: 1fr; }
 .webhookHelpField textarea { min-height: 112px; }
 .weixinLoginBody { display: flex; gap: 14px; }
-.weixinQr { display: grid; place-items: center; width: 160px; height: 160px; flex: 0 0 auto; border: 1px solid var(--app-border); border-radius: var(--mantine-radius-md); background: var(--app-soft); object-fit: contain; }
+.weixinQr { display: grid; place-items: center; width: 160px; height: 160px; flex: 0 0 auto; border: 1px solid var(--app-border); border-radius: 6px; background: var(--app-soft); object-fit: contain; }
 
 .loginShell {
-  --app-bg: #0d0f0e;
-  --app-surface: #161a18;
-  --app-soft: #202620;
-  --app-muted: #a4ada6;
-  --app-text: #f4f1e8;
-  --app-border: #343b35;
-  --app-primary: #e7f6df;
-  --app-primary-soft: rgba(188, 228, 184, 0.12);
-  --app-info-soft: rgba(232, 207, 132, 0.1);
-  --app-accent: #7ddc92;
-  --app-shadow: 0 22px 60px rgba(0, 0, 0, 0.36);
+  --app-bg: #f4f4f2;
+  --app-surface: #0a0a0a;
+  --app-soft: #111111;
+  --app-muted: #a1a1aa;
+  --app-text: #fafafa;
+  --app-border: #27272a;
+  --app-strong-border: #fafafa;
+  --app-primary: #fafafa;
+  --app-primary-soft: rgba(250, 250, 250, 0.1);
+  --app-info-soft: rgba(250, 250, 250, 0.07);
+  --app-accent: #d4d4d8;
+  --app-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+  position: relative;
   min-height: 100vh;
   overflow: hidden;
+  background: var(--app-bg);
+  color: #111;
+}
+.loginShell::before {
+  content: "";
+  position: absolute;
+  inset: 96px 32px auto auto;
+  width: min(58vw, 820px);
+  height: 760px;
+  pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    radial-gradient(circle at 50% -20%, rgba(232, 207, 132, 0.14), transparent 42%),
-    var(--app-bg);
-  background-size: 44px 44px, 44px 44px, auto, auto;
+    repeating-radial-gradient(circle at 48% 38%, rgba(250, 250, 250, 0.22) 0 1px, transparent 1px 10px),
+    linear-gradient(135deg, transparent 0 32%, rgba(250, 250, 250, 0.12) 32% 38%, transparent 38% 59%, rgba(250, 250, 250, 0.1) 59% 65%, transparent 65% 100%),
+    repeating-linear-gradient(90deg, rgba(250, 250, 250, 0.045) 0 1px, transparent 1px 7px);
+  opacity: 0.72;
+  mask-image: linear-gradient(90deg, transparent 0, black 16%, black 86%, transparent 100%);
+}
+.loginShell::after {
+  content: "HUMEN-MCP\A ASK_HUMEN\A HUMAN LOOP";
+  position: absolute;
+  right: 8vw;
+  top: 255px;
+  width: min(560px, 40vw);
+  white-space: pre;
+  color: rgba(250, 250, 250, 0.28);
+  font-family: var(--mantine-font-family-monospace);
+  font-size: clamp(38px, 6vw, 96px);
+  font-weight: 900;
+  line-height: 0.82;
+  letter-spacing: 0;
+  pointer-events: none;
+  text-align: center;
+}
+.loginShell > * { position: relative; z-index: 1; }
+.loginShell > .loginNav,
+.loginShell > .loginHeroLayout,
+.loginShell > .loginFlowStage,
+.loginShell > .loginPublicContent {
+  background: #070707;
   color: var(--app-text);
 }
-.loginNav { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: min(1180px, calc(100% - 48px)); margin: 0 auto; padding: 22px 0 10px; }
-.loginNav .sourceLink { border-color: rgba(244, 241, 232, 0.2); background: rgba(244, 241, 232, 0.06); color: var(--app-text); }
-.loginHeroLayout { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(340px, 0.72fr); gap: 36px; align-items: center; width: min(1180px, calc(100% - 48px)); margin: 0 auto; padding: 42px 0 34px; }
+.loginNav { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: min(1376px, calc(100% - 64px)); margin: 32px auto 0; padding: 12px 72px; border: 1px solid #242424; border-bottom: 0; }
+.loginNav .brandLockup h1 { color: var(--app-text); }
+.loginNav .sourceLink { border-color: #e8e8e8; background: #f2f2f2; color: #111; min-height: 44px; padding: 0 28px; text-transform: uppercase; }
+.loginHeroLayout { display: grid; grid-template-columns: minmax(0, 0.86fr) minmax(430px, 0.74fr); gap: 72px; align-items: center; width: min(1376px, calc(100% - 64px)); min-height: 720px; margin: 0 auto; padding: 78px 120px 56px; border-inline: 1px solid #242424; border-top: 1px solid #171717; }
 .loginHeroCopy { max-width: 720px; text-align: left; }
-.loginHeroCopy h2 { max-width: 620px; color: var(--app-text); font-size: clamp(42px, 6vw, 78px); line-height: 0.96; letter-spacing: 0; }
-.loginHeroCopy p { max-width: 620px; font-size: 17px; line-height: 1.7; }
-.loginEyebrow { color: #e8cf84; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+.loginHeroCopy h2 { max-width: 760px; color: var(--app-text); font-size: clamp(54px, 7vw, 92px); line-height: 0.93; letter-spacing: 0; word-break: keep-all; overflow-wrap: normal; }
+.loginHeroCopy p { max-width: 610px; font-size: 18px; line-height: 1.55; color: #a4a4aa; }
+.loginEyebrow { color: var(--app-text); font-family: var(--mantine-font-family-monospace); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+.loginEyebrow::before { content: "[ "; }
+.loginEyebrow::after { content: " ]"; }
 .loginHeroMetrics { display: flex; flex-wrap: wrap; gap: 8px; }
-.loginHeroMetrics span { min-height: 32px; padding: 6px 10px; border: 1px solid rgba(232, 207, 132, 0.26); border-radius: var(--mantine-radius-md); background: rgba(232, 207, 132, 0.08); color: var(--app-muted); font-size: 12px; font-weight: 800; }
+.loginHeroMetrics span { min-height: 32px; padding: 6px 10px; border: 1px solid var(--app-border); border-radius: 0; background: var(--app-soft); color: var(--app-muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
 .loginHeroMetrics strong { color: var(--app-text); }
-.loginPanel { align-self: center; width: 100%; padding: 18px; border: 1px solid rgba(244, 241, 232, 0.16); border-radius: var(--mantine-radius-md); background: rgba(22, 26, 24, 0.86); box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42); backdrop-filter: blur(16px); }
+.loginPanel { align-self: center; width: 100%; padding: 18px; border: 1px solid #2c2c2c; border-radius: 0; background: rgba(7, 7, 7, 0.94); box-shadow: 10px 10px 0 rgba(255, 255, 255, 0.02), 18px 18px 0 rgba(255, 255, 255, 0.015); backdrop-filter: blur(16px); }
 .loginPanelHead { align-items: flex-start; padding-bottom: 4px; }
 .loginPanelHead h3 { color: var(--app-text); font-size: 18px; }
 .loginPanelHead p { margin-top: 3px; color: var(--app-muted); font-size: 13px; line-height: 1.45; }
-.loginPanelIcon { display: grid; place-items: center; width: 38px; height: 38px; flex: 0 0 auto; border-radius: var(--mantine-radius-md); background: var(--app-primary); color: #0d0f0e; }
-.loginPrimaryAuth, .passkeyLogin, .adminLoginForm { gap: 10px; padding-top: 6px; border-top: 1px solid rgba(244, 241, 232, 0.1); }
+.loginPanelIcon { display: grid; place-items: center; width: 38px; height: 38px; flex: 0 0 auto; border: 1px solid var(--app-border); border-radius: 0; background: var(--app-soft); color: var(--app-text); }
+.loginPrimaryAuth, .passkeyLogin, .adminLoginForm { gap: 10px; padding-top: 6px; border-top: 1px solid var(--app-border); }
 .loginPrimaryAuth > span { color: var(--app-muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
 .loginPanel .primary, .loginPanel .secondary, .loginPanel .oauth { width: 100%; }
-.loginPanel :where(input, textarea, select) { border-color: rgba(244, 241, 232, 0.16); background: rgba(13, 15, 14, 0.72); color: var(--app-text); }
-.loginPanel :where(input, textarea, select)::placeholder { color: rgba(244, 241, 232, 0.36); }
-.loginPanel .oauth { min-height: 46px; border-color: var(--app-primary); background: var(--app-primary); color: #0d0f0e; }
-.loginPanel .secondary { min-height: 44px; border-color: rgba(244, 241, 232, 0.22); background: rgba(244, 241, 232, 0.08); color: var(--app-text); }
-.loginPanel .primary { min-height: 44px; background: #e8cf84; color: #16120a; border-color: #e8cf84; }
+.loginPanel :where(input, textarea, select) { border-color: var(--app-border); background: var(--app-surface); color: var(--app-text); }
+.loginPanel :where(input, textarea, select)::placeholder { color: color-mix(in srgb, var(--app-muted) 70%, transparent); }
+.loginPanel .oauth { min-height: 46px; border-color: var(--app-strong-border); background: var(--app-text); color: var(--app-bg); }
+.loginPanel .secondary { min-height: 44px; border-color: var(--app-border); background: var(--app-surface); color: var(--app-text); }
+.loginPanel .primary { min-height: 44px; border-color: var(--app-strong-border); background: var(--app-text); color: var(--app-bg); }
 .loginNotice { padding: 10px 0 4px; }
-.adminLoginToggle { justify-content: flex-start; min-height: 34px; border: 0; background: transparent; color: #e8cf84; font-weight: 800; }
-.loginConsolePreview { max-width: 660px; margin-top: 6px; overflow: hidden; border: 1px solid rgba(244, 241, 232, 0.14); border-radius: var(--mantine-radius-md); background: rgba(9, 10, 9, 0.72); box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28); }
-.consoleTopbar { display: flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 12px; border-bottom: 1px solid rgba(244, 241, 232, 0.1); background: rgba(244, 241, 232, 0.04); }
-.consoleTopbar span { width: 8px; height: 8px; border-radius: 999px; background: #e8cf84; }
-.consoleTopbar span:nth-child(2) { background: #7ddc92; }
-.consoleTopbar span:nth-child(3) { background: #a4ada6; }
+.adminLoginToggle { justify-content: flex-start; min-height: 34px; border: 0; background: transparent; color: var(--app-primary); font-weight: 800; }
+.loginConsolePreview { max-width: 660px; margin-top: 6px; overflow: hidden; border: 1px solid #2c2c2c; border-radius: 0; background: rgba(7, 7, 7, 0.94); box-shadow: 10px 10px 0 rgba(255, 255, 255, 0.02), 18px 18px 0 rgba(255, 255, 255, 0.015); backdrop-filter: blur(16px); }
+.consoleTopbar { display: flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 12px; border-bottom: 1px solid var(--app-border); background: var(--app-soft); }
+.consoleTopbar span { width: 8px; height: 8px; border-radius: 999px; background: var(--app-primary); }
+.consoleTopbar span:nth-child(2) { background: var(--app-accent); }
+.consoleTopbar span:nth-child(3) { background: var(--app-muted); }
 .consoleTopbar code { margin-left: auto; color: var(--app-muted); font-size: 12px; }
 .consoleBody { padding: 14px; }
-.consolePrompt, .consoleAnswer { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 10px; border-radius: var(--mantine-radius-md); background: rgba(244, 241, 232, 0.06); font-size: 13px; font-weight: 800; }
-.consolePrompt svg { color: #e8cf84; }
-.consoleAnswer { background: rgba(125, 220, 146, 0.1); color: #ddf9e1; }
-.consoleAnswer svg { color: #7ddc92; }
-.consoleRow { display: grid; grid-template-columns: 80px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 34px; padding: 0 10px; border: 1px solid rgba(244, 241, 232, 0.08); border-radius: var(--mantine-radius-md); background: rgba(244, 241, 232, 0.03); font-family: var(--mantine-font-family-monospace); font-size: 12px; }
+.consolePrompt, .consoleAnswer { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 10px; border: 1px solid var(--app-border); border-radius: 0; background: var(--app-soft); font-size: 13px; font-weight: 800; }
+.consolePrompt svg { color: var(--app-primary); }
+.consoleAnswer { background: color-mix(in srgb, var(--app-accent) 10%, var(--app-surface)); color: var(--app-text); }
+.consoleAnswer svg { color: var(--app-accent); }
+.consoleRow { display: grid; grid-template-columns: 80px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 34px; padding: 0 10px; border: 1px solid var(--app-border); border-radius: 0; background: var(--app-surface); font-family: var(--mantine-font-family-monospace); font-size: 12px; }
 .consoleRow span { color: var(--app-muted); }
 .consoleRow strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--app-text); }
-.consoleRow em { color: #e8cf84; font-style: normal; font-weight: 800; }
-.loginFlowStage { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; width: min(1180px, calc(100% - 48px)); margin: 4px auto 0; padding: 8px 0 28px; }
+.consoleRow em { color: var(--app-primary); font-style: normal; font-weight: 800; }
+.loginFlowStage { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; width: min(1376px, calc(100% - 64px)); margin: 0 auto; padding: 42px 96px 80px; border-inline: 1px solid #242424; border-bottom: 1px solid #242424; }
 .handoffRail, .requestPreview, .introCardGrid, .integrationGrid { display: grid; gap: 12px; }
 .handoffRail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .requestPreview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .handoffStep { display: grid; grid-template-columns: auto 1fr; padding: 14px; }
 .handoffStep small { grid-column: 2; color: var(--app-muted); }
-.handoffIcon, .introIcon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: var(--mantine-radius-md); background: var(--app-soft); color: var(--app-primary); }
+.handoffIcon, .introIcon { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid var(--app-border); border-radius: 0; background: var(--app-soft); color: var(--app-primary); }
 .previewHeader { display: flex; align-items: center; gap: 8px; }
 .requestPreviewPanel { padding: 16px; }
 .requestPreviewPanel.answered { border-color: var(--app-border); }
 .requestPreviewPanel dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; margin: 12px 0; }
 .requestPreviewPanel dt { color: var(--app-muted); }
 .requestPreviewPanel dd { margin: 0; font-weight: 700; }
-.loginPublicContent { width: min(1200px, calc(100% - 48px)); margin: 0 auto; padding: 28px 0 36px; border-top: 1px solid var(--app-border); }
+.loginPublicContent { width: min(1376px, calc(100% - 64px)); margin: 0 auto 32px; padding: 42px 96px 72px; border: 1px solid #242424; border-top: 0; }
 .introHeader { display: grid; gap: 8px; max-width: 760px; }
 .introCardTitle { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .plannedBadge { display: inline-flex; align-items: center; min-height: 24px; padding: 0 8px; border: 1px solid var(--mantine-color-yellow-6); border-radius: 999px; background: var(--app-warning-soft); color: var(--app-text); font-size: 12px; font-weight: 800; }
 .introCard.planned { border-color: color-mix(in srgb, var(--mantine-color-yellow-6) 55%, var(--app-border)); background: color-mix(in srgb, var(--app-warning-soft) 38%, var(--app-surface)); }
 .introCard.wide { grid-column: span 2; }
+.loginPublicContent :where(.introCard, .introPanel, .publicBoard) { border-color: #2c2c2c; background: #0a0a0a; }
+.loginPublicContent :where(.introHeader p, .introCard p, .introPanel p, .publicBoard em, .publicBoardEmpty) { color: #a4a4aa; }
 .publicBoard ol { display: grid; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
 :where(.publicBoard li, .exampleList div) { justify-content: space-between; }
 
@@ -411,10 +472,44 @@ pre { overflow: auto; margin: 0; padding: 14px; border-radius: var(--mantine-rad
   :where(.pageTitle .primary, .pageTitle .secondary, .rowActions .primary, .rowActions .secondary, .agentSecretRow .primary, .agentSecretRow .secondary, .githubTokenGrid .primary, .githubTokenGrid .secondary, .passkeyAddRow .primary, .passkeyAddRow .secondary, .introAddRow .primary, .introAddRow .secondary, .oauthActions .primary, .oauthActions .secondary, .webhookActions .primary, .webhookActions .secondary, .loginPanel .primary, .loginPanel .secondary, .loginPanel .oauth, .loginNav .sourceLink) { width: 100%; }
   .weixinQr { width: 100%; max-width: 220px; }
   .loginShell { overflow: visible; }
+  .loginShell::before { width: 100%; height: 560px; opacity: 0.32; mask-image: linear-gradient(180deg, black 0, black 58%, transparent 100%); }
+  .loginShell::after { display: none; }
+  .loginShell > .loginNav,
+  .loginShell > .loginHeroLayout,
+  .loginShell > .loginFlowStage,
+  .loginShell > .loginPublicContent {
+    width: min(100%, calc(100% - 24px));
+  }
+  .loginShell > .loginNav {
+    margin-top: 12px;
+    padding: 14px 16px;
+  }
   .loginNav { align-items: flex-start; }
-  .loginHeroCopy h2 { font-size: 34px; }
+  .loginNav .sourceLink { white-space: nowrap; }
+  .loginHeroLayout {
+    padding: 32px 24px 36px;
+    min-height: 0;
+  }
+  .loginHeroCopy {
+    width: 100%;
+    max-width: none;
+  }
+  .loginHeroCopy h2 {
+    max-width: none;
+    font-size: 42px;
+    line-height: 0.98;
+  }
+  .loginHeroCopy p {
+    max-width: none;
+    font-size: 16px;
+    line-height: 1.65;
+  }
   .loginHeroMetrics { display: grid; grid-template-columns: 1fr; }
+  .loginHeroMetrics span { width: 100%; }
   .loginPanel { padding: 14px; }
+  .loginPanel, .loginConsolePreview { width: 100%; max-width: none; box-shadow: none; }
+  .loginFlowStage,
+  .loginPublicContent { padding: 24px; }
   .consoleRow { grid-template-columns: 64px minmax(0, 1fr); }
   .consoleRow em { grid-column: 2; }
   .handoffRail, .requestPreview { grid-template-columns: 1fr; }
