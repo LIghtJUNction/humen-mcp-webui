@@ -271,21 +271,22 @@ pre code { padding: 0; border-radius: 0; background: transparent; color: inherit
   --landing-bg: #f3f1ea;
   --landing-paper: #fffdf6;
   --landing-ink: #11110f;
-  --landing-stage: #080807;
-  --landing-stage-2: #10100f;
+  --landing-stage: #fbf8ee;
+  --landing-stage-2: #eee9dc;
+  --landing-dark: #11110f;
   --landing-accent: #d9ff65;
   --app-bg: var(--landing-bg);
-  --app-surface: #0b0b0a;
-  --app-soft: #151514;
-  --app-muted: #a9a79f;
-  --app-text: #fbfaf5;
-  --app-border: #2e2d29;
-  --app-strong-border: #fbfaf5;
-  --app-primary: #fbfaf5;
-  --app-primary-soft: rgba(251, 250, 245, 0.1);
-  --app-info-soft: rgba(251, 250, 245, 0.07);
+  --app-surface: var(--landing-paper);
+  --app-soft: color-mix(in srgb, var(--landing-ink) 7%, transparent);
+  --app-muted: #5f5a52;
+  --app-text: var(--landing-ink);
+  --app-border: color-mix(in srgb, var(--landing-ink) 26%, transparent);
+  --app-strong-border: var(--landing-ink);
+  --app-primary: var(--landing-ink);
+  --app-primary-soft: color-mix(in srgb, var(--landing-accent) 28%, transparent);
+  --app-info-soft: color-mix(in srgb, var(--landing-accent) 16%, transparent);
   --app-accent: var(--landing-accent);
-  --app-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+  --app-shadow: 0 1px 0 rgba(17, 17, 15, 0.08);
   position: relative;
   min-height: 100vh;
   overflow-x: clip;
@@ -295,22 +296,22 @@ pre code { padding: 0; border-radius: 0; background: transparent; color: inherit
 .loginShell[data-landing-tone="graphite"] {
   --landing-bg: #e8e8e2;
   --landing-paper: #f8f8f0;
-  --landing-stage: #14161a;
-  --landing-stage-2: #0f1013;
+  --landing-stage: #f0f0e9;
+  --landing-stage-2: #dfdfd7;
   --landing-accent: #d7d4cb;
 }
 .loginShell[data-landing-tone="sand"] {
   --landing-bg: #eee4d1;
   --landing-paper: #fff8e8;
-  --landing-stage: #17130f;
-  --landing-stage-2: #21190f;
+  --landing-stage: #fff4d7;
+  --landing-stage-2: #eadbbd;
   --landing-accent: #ffd66b;
 }
 .loginShell[data-landing-tone="sky"] {
   --landing-bg: #e7eef0;
   --landing-paper: #f7fbfb;
-  --landing-stage: #0b1113;
-  --landing-stage-2: #10191b;
+  --landing-stage: #eef8f8;
+  --landing-stage-2: #dce9ec;
   --landing-accent: #8ee7ff;
 }
 .loginShell::before {
@@ -357,15 +358,15 @@ pre code { padding: 0; border-radius: 0; background: transparent; color: inherit
   width: min(1760px, calc(100% - 32px));
   margin: 0 auto;
   overflow: hidden;
-  border: 1px solid #141412;
+  border: 1px solid var(--landing-ink);
   background:
-    radial-gradient(circle at 83% 18%, color-mix(in srgb, var(--landing-accent) 20%, transparent), transparent 26%),
-    repeating-radial-gradient(circle at 76% 38%, rgba(251, 250, 245, 0.18) 0 1px, transparent 1px 10px),
+    radial-gradient(circle at 83% 18%, color-mix(in srgb, var(--landing-accent) 34%, transparent), transparent 28%),
+    repeating-radial-gradient(circle at 76% 38%, color-mix(in srgb, var(--landing-ink) 16%, transparent) 0 1px, transparent 1px 10px),
     linear-gradient(180deg, var(--landing-stage) 0%, var(--landing-stage-2) 100%);
-  color: var(--app-text);
+  color: var(--landing-ink);
 }
-.loginNav { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; padding: 14px 28px; border-bottom: 1px solid #242424; }
-.loginNav .brandLockup h1 { color: var(--app-text); }
+.loginNav { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; padding: 14px 28px; border-bottom: 1px solid color-mix(in srgb, var(--landing-ink) 22%, transparent); }
+.loginNav .brandLockup h1 { color: var(--landing-ink); }
 .loginNavLinks, .loginNavActions, .loginHeroActions { display: flex; align-items: center; gap: 8px; }
 .loginNavLinks { justify-content: center; }
 .loginNavLinks a, .loginDocsLink {
@@ -373,25 +374,25 @@ pre code { padding: 0; border-radius: 0; background: transparent; color: inherit
   align-items: center;
   min-height: 36px;
   padding: 0 12px;
-  color: #d8d6cf;
+  color: var(--landing-ink);
   font-size: 13px;
   font-weight: 800;
   text-decoration: none;
 }
 .loginNavActions { justify-content: flex-end; }
-.landingThemeSwitcher { display: inline-flex; align-items: center; gap: 4px; min-height: 38px; padding: 0 6px; border: 1px solid #34332f; background: rgba(10, 10, 9, 0.72); }
+.landingThemeSwitcher { display: inline-flex; align-items: center; gap: 4px; min-height: 38px; padding: 0 6px; border: 1px solid var(--landing-ink); background: color-mix(in srgb, var(--landing-paper) 86%, white); }
 .landingThemeSwitcher button { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 1px solid transparent; border-radius: 0; background: transparent; }
-.landingThemeSwitcher button.active { border-color: #efede2; }
-.themeSwatch { width: 16px; height: 16px; border: 1px solid rgba(255, 255, 255, 0.36); }
+.landingThemeSwitcher button.active { border-color: var(--landing-ink); background: var(--landing-ink); }
+.themeSwatch { width: 16px; height: 16px; border: 1px solid color-mix(in srgb, var(--landing-ink) 42%, transparent); }
 .themeSwatch.moss { background: #d9ff65; }
 .themeSwatch.graphite { background: #d7d4cb; }
 .themeSwatch.sand { background: #ffd66b; }
 .themeSwatch.sky { background: #8ee7ff; }
-.loginDocsLink { border: 1px solid #efede2; color: #efede2; font-family: var(--mantine-font-family-monospace); }
-.loginNav .sourceLink { min-height: 38px; padding: 0 16px; border-color: #efede2; background: #efede2; color: #111; text-transform: uppercase; }
+.loginDocsLink { border: 1px solid var(--landing-ink); color: var(--landing-ink); font-family: var(--mantine-font-family-monospace); }
+.loginNav .sourceLink { min-height: 38px; padding: 0 16px; border-color: var(--landing-ink); background: var(--landing-ink); color: var(--landing-paper); text-transform: uppercase; }
 .loginHeroLayout { display: grid; grid-template-columns: minmax(560px, 0.95fr) minmax(460px, 0.72fr); gap: clamp(44px, 5vw, 92px); align-items: center; min-height: min(820px, calc(100vh - 78px)); padding: clamp(64px, 8vh, 104px) clamp(72px, 7vw, 124px) 58px; }
 .loginHeroCopy { max-width: 880px; text-align: left; }
-.loginHeroCopy h2 { max-width: 800px; color: var(--app-text); font-size: clamp(58px, 7.1vw, 104px); line-height: 0.9; letter-spacing: 0; word-break: keep-all; overflow-wrap: normal; text-wrap: balance; }
+.loginHeroCopy h2 { max-width: 800px; color: var(--landing-ink); font-size: clamp(58px, 7.1vw, 104px); line-height: 0.9; letter-spacing: 0; word-break: keep-all; overflow-wrap: normal; text-wrap: balance; }
 .kineticTitle { cursor: crosshair; font-family: var(--mantine-font-family-monospace); }
 .kineticTitle span[aria-hidden="true"] {
   display: inline-block;
@@ -400,12 +401,12 @@ pre code { padding: 0; border-radius: 0; background: transparent; color: inherit
   will-change: transform;
 }
 .kineticTitle span.near {
-  color: color-mix(in srgb, var(--landing-accent) 46%, var(--app-text));
+  color: color-mix(in srgb, var(--landing-accent) 62%, var(--landing-ink));
   opacity: 0.86;
   transform: translateY(-0.025em);
 }
 .kineticTitle span.active {
-  color: var(--landing-accent);
+  color: color-mix(in srgb, var(--landing-accent) 64%, var(--landing-ink));
   transform: translateY(-0.07em) scale(1.04);
   text-shadow: 0 0 18px color-mix(in srgb, var(--landing-accent) 58%, transparent);
 }
@@ -417,14 +418,14 @@ pre code { padding: 0; border-radius: 0; background: transparent; color: inherit
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
 }
-.loginHeroCopy p { max-width: 710px; font-size: 20px; line-height: 1.6; color: #c3c0b7; text-wrap: pretty; }
-.loginEyebrow { color: var(--app-text); font-family: var(--mantine-font-family-monospace); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+.loginHeroCopy p { max-width: 710px; font-size: 20px; line-height: 1.6; color: #555149; text-wrap: pretty; }
+.loginEyebrow { color: var(--landing-ink); font-family: var(--mantine-font-family-monospace); font-size: 12px; font-weight: 800; text-transform: uppercase; }
 .loginEyebrow::before { content: "[ "; }
 .loginEyebrow::after { content: " ]"; }
 .loginHeroActions { flex-wrap: wrap; margin-top: 4px; }
 .loginHeroActions .primary, .loginHeroActions .secondary { min-height: 46px; padding: 0 18px; border-radius: 0; text-decoration: none; }
-.loginHeroActions .primary { border-color: #efede2; background: #efede2; color: #111; }
-.loginHeroActions .secondary { border-color: #383733; background: #11110f; color: #efede2; }
+.loginHeroActions .primary { border-color: var(--landing-ink); background: var(--landing-ink); color: var(--landing-paper); }
+.loginHeroActions .secondary { border-color: var(--landing-ink); background: color-mix(in srgb, var(--landing-paper) 72%, white); color: var(--landing-ink); }
 .loginHeroMetrics { display: flex; flex-wrap: wrap; gap: 8px; }
 .loginHeroMetrics span { min-height: 32px; padding: 6px 10px; border: 1px solid var(--app-border); border-radius: 0; background: var(--app-soft); color: var(--app-muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
 .loginHeroMetrics strong { color: var(--app-text); }
@@ -434,7 +435,7 @@ pre code { padding: 0; border-radius: 0; background: transparent; color: inherit
   right: -28px;
   top: -40px;
   width: 360px;
-  color: rgba(251, 250, 245, 0.18);
+  color: color-mix(in srgb, var(--landing-ink) 18%, transparent);
   font-family: var(--mantine-font-family-monospace);
   font-size: 56px;
   font-weight: 900;
@@ -446,7 +447,7 @@ pre code { padding: 0; border-radius: 0; background: transparent; color: inherit
   border: 1px solid #34332f;
   border-radius: 0;
   background: rgba(9, 9, 8, 0.9);
-  box-shadow: 16px 16px 0 rgba(251, 250, 245, 0.035);
+  box-shadow: 16px 16px 0 rgba(17, 17, 15, 0.08);
   backdrop-filter: blur(18px);
 }
 .productCodeWindow { margin: 36px 0 0 0; overflow: hidden; }
@@ -473,16 +474,16 @@ pre code { padding: 0; border-radius: 0; background: transparent; color: inherit
 .loginAccessCopy .loginEyebrow { color: var(--landing-ink); }
 .loginAccessCopy h2 { color: var(--landing-ink); font-size: clamp(30px, 4.5vw, 54px); line-height: 0.98; text-wrap: balance; }
 .loginAccessCopy p { max-width: 560px; color: #555149; font-size: 16px; line-height: 1.65; }
-.loginPanel { align-self: center; width: 100%; padding: 18px; border: 1px solid #20201d; border-radius: 0; background: #0b0b0a; box-shadow: 10px 10px 0 rgba(17, 17, 17, 0.08); color: var(--app-text); }
+.loginPanel { align-self: center; width: 100%; padding: 18px; border: 1px solid #20201d; border-radius: 0; background: var(--landing-dark); box-shadow: 10px 10px 0 rgba(17, 17, 17, 0.08); color: var(--landing-paper); }
 .loginPanelHead { align-items: flex-start; padding-bottom: 4px; }
-.loginPanelHead h3 { color: var(--app-text); font-size: 18px; }
-.loginPanelHead p { margin-top: 3px; color: var(--app-muted); font-size: 13px; line-height: 1.45; }
-.loginPanelIcon { display: grid; place-items: center; width: 38px; height: 38px; flex: 0 0 auto; border: 1px solid var(--app-border); border-radius: 0; background: var(--app-soft); color: var(--app-text); }
-.loginPrimaryAuth, .passkeyLogin, .adminLoginForm { gap: 10px; padding-top: 6px; border-top: 1px solid var(--app-border); }
-.loginPrimaryAuth > span { color: var(--app-muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+.loginPanelHead h3 { color: var(--landing-paper); font-size: 18px; }
+.loginPanelHead p { margin-top: 3px; color: #a9a79f; font-size: 13px; line-height: 1.45; }
+.loginPanelIcon { display: grid; place-items: center; width: 38px; height: 38px; flex: 0 0 auto; border: 1px solid #34332f; border-radius: 0; background: #191916; color: var(--landing-paper); }
+.loginPrimaryAuth, .passkeyLogin, .adminLoginForm { gap: 10px; padding-top: 6px; border-top: 1px solid #34332f; }
+.loginPrimaryAuth > span { color: #a9a79f; font-size: 12px; font-weight: 800; text-transform: uppercase; }
 .loginPanel .primary, .loginPanel .secondary, .loginPanel .oauth { width: 100%; }
-.loginPanel :where(input, textarea, select) { border-color: var(--app-border); background: var(--app-surface); color: var(--app-text); }
-.loginPanel :where(input, textarea, select)::placeholder { color: color-mix(in srgb, var(--app-muted) 70%, transparent); }
+.loginPanel :where(input, textarea, select) { border-color: #34332f; background: #151514; color: var(--landing-paper); }
+.loginPanel :where(input, textarea, select)::placeholder { color: color-mix(in srgb, #a9a79f 70%, transparent); }
 .loginPanel .oauth {
   min-height: 46px;
   border-color: #f3f0e6;
@@ -495,11 +496,11 @@ pre code { padding: 0; border-radius: 0; background: transparent; color: inherit
   background: #ffffff;
   color: #080807;
 }
-.loginPanel .secondary { min-height: 44px; border-color: var(--app-border); background: var(--app-surface); color: var(--app-text); }
-.loginPanel .primary { min-height: 44px; border-color: var(--app-strong-border); background: var(--app-text); color: var(--app-bg); }
+.loginPanel .secondary { min-height: 44px; border-color: #34332f; background: #151514; color: var(--landing-paper); }
+.loginPanel .primary { min-height: 44px; border-color: var(--landing-paper); background: var(--landing-paper); color: var(--landing-ink); }
 .loginNotice { padding: 10px 0 4px; }
-.adminLoginToggle { justify-content: flex-start; min-height: 34px; border: 0; background: transparent; color: var(--app-primary); font-weight: 800; }
-.loginFlowStage { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(420px, 0.74fr); gap: 16px; align-items: start; padding: 30px clamp(72px, 7vw, 124px) 62px; border-top: 1px solid #242424; }
+.adminLoginToggle { justify-content: flex-start; min-height: 34px; border: 0; background: transparent; color: var(--landing-accent); font-weight: 800; }
+.loginFlowStage { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(420px, 0.74fr); gap: 16px; align-items: start; padding: 30px clamp(72px, 7vw, 124px) 62px; border-top: 1px solid color-mix(in srgb, var(--landing-ink) 22%, transparent); }
 .handoffRail, .requestPreview, .introCardGrid, .integrationGrid { display: grid; gap: 12px; }
 .handoffRail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .requestPreview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
