@@ -268,17 +268,17 @@ pre code { padding: 0; border-radius: 0; background: transparent; color: inherit
 .weixinQr { display: grid; place-items: center; width: 160px; height: 160px; flex: 0 0 auto; border: 1px solid var(--app-border); border-radius: 6px; background: var(--app-soft); object-fit: contain; }
 
 .loginShell {
-  --app-bg: #f4f4f2;
-  --app-surface: #0a0a0a;
-  --app-soft: #111111;
-  --app-muted: #a1a1aa;
-  --app-text: #fafafa;
-  --app-border: #27272a;
-  --app-strong-border: #fafafa;
-  --app-primary: #fafafa;
-  --app-primary-soft: rgba(250, 250, 250, 0.1);
-  --app-info-soft: rgba(250, 250, 250, 0.07);
-  --app-accent: #d4d4d8;
+  --app-bg: #f3f1ea;
+  --app-surface: #0b0b0a;
+  --app-soft: #151514;
+  --app-muted: #a9a79f;
+  --app-text: #fbfaf5;
+  --app-border: #2e2d29;
+  --app-strong-border: #fbfaf5;
+  --app-primary: #fbfaf5;
+  --app-primary-soft: rgba(251, 250, 245, 0.1);
+  --app-info-soft: rgba(251, 250, 245, 0.07);
+  --app-accent: #d9ff65;
   --app-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
   position: relative;
   min-height: 100vh;
@@ -289,55 +289,131 @@ pre code { padding: 0; border-radius: 0; background: transparent; color: inherit
 .loginShell::before {
   content: "";
   position: absolute;
-  inset: 96px 32px auto auto;
-  width: min(58vw, 820px);
-  height: 760px;
+  inset: 0;
   pointer-events: none;
   background:
-    repeating-radial-gradient(circle at 48% 38%, rgba(250, 250, 250, 0.22) 0 1px, transparent 1px 10px),
-    linear-gradient(135deg, transparent 0 32%, rgba(250, 250, 250, 0.12) 32% 38%, transparent 38% 59%, rgba(250, 250, 250, 0.1) 59% 65%, transparent 65% 100%),
-    repeating-linear-gradient(90deg, rgba(250, 250, 250, 0.045) 0 1px, transparent 1px 7px);
-  opacity: 0.72;
-  mask-image: linear-gradient(90deg, transparent 0, black 16%, black 86%, transparent 100%);
+    linear-gradient(90deg, rgba(14, 14, 12, 0.07) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(14, 14, 12, 0.05) 1px, transparent 1px);
+  background-size: 36px 36px;
+  opacity: 0.55;
 }
 .loginShell::after {
-  content: "HUMEN-MCP\A ASK_HUMEN\A HUMAN LOOP";
+  content: "";
   position: absolute;
-  right: 8vw;
-  top: 255px;
-  width: min(560px, 40vw);
-  white-space: pre;
-  color: rgba(250, 250, 250, 0.28);
-  font-family: var(--mantine-font-family-monospace);
-  font-size: clamp(38px, 6vw, 96px);
-  font-weight: 900;
-  line-height: 0.82;
-  letter-spacing: 0;
+  inset: 82px 18px auto;
+  height: min(680px, 70vh);
   pointer-events: none;
-  text-align: center;
+  background: radial-gradient(circle at 66% 28%, rgba(217, 255, 101, 0.16), transparent 34%);
+  filter: blur(1px);
 }
 .loginShell > * { position: relative; z-index: 1; }
-.loginShell > .loginNav,
-.loginShell > .loginHeroLayout,
-.loginShell > .loginFlowStage,
-.loginShell > .loginPublicContent {
-  background: #070707;
+.loginAnnouncement {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: fit-content;
+  max-width: calc(100% - 32px);
+  min-height: 36px;
+  margin: 18px auto 12px;
+  padding: 0 16px;
+  border: 1px solid #111;
+  border-radius: 999px;
+  background: #fffdf6;
+  color: #111;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.loginAnnouncement strong { font-family: var(--mantine-font-family-monospace); font-size: 12px; text-transform: uppercase; }
+.loginStage {
+  width: min(1376px, calc(100% - 48px));
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid #141412;
+  background:
+    radial-gradient(circle at 83% 18%, rgba(217, 255, 101, 0.18), transparent 26%),
+    repeating-radial-gradient(circle at 76% 38%, rgba(251, 250, 245, 0.18) 0 1px, transparent 1px 10px),
+    linear-gradient(180deg, #080807 0%, #10100f 100%);
   color: var(--app-text);
 }
-.loginNav { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: min(1376px, calc(100% - 64px)); margin: 32px auto 0; padding: 12px 72px; border: 1px solid #242424; border-bottom: 0; }
+.loginNav { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; padding: 14px 28px; border-bottom: 1px solid #242424; }
 .loginNav .brandLockup h1 { color: var(--app-text); }
-.loginNav .sourceLink { border-color: #e8e8e8; background: #f2f2f2; color: #111; min-height: 44px; padding: 0 28px; text-transform: uppercase; }
-.loginHeroLayout { display: grid; grid-template-columns: minmax(0, 0.86fr) minmax(430px, 0.74fr); gap: 72px; align-items: center; width: min(1376px, calc(100% - 64px)); min-height: 720px; margin: 0 auto; padding: 78px 120px 56px; border-inline: 1px solid #242424; border-top: 1px solid #171717; }
-.loginHeroCopy { max-width: 720px; text-align: left; }
-.loginHeroCopy h2 { max-width: 760px; color: var(--app-text); font-size: clamp(54px, 7vw, 92px); line-height: 0.93; letter-spacing: 0; word-break: keep-all; overflow-wrap: normal; }
-.loginHeroCopy p { max-width: 610px; font-size: 18px; line-height: 1.55; color: #a4a4aa; }
+.loginNavLinks, .loginNavActions, .loginHeroActions { display: flex; align-items: center; gap: 8px; }
+.loginNavLinks { justify-content: center; }
+.loginNavLinks a, .loginDocsLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
+  color: #d8d6cf;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.loginNavActions { justify-content: flex-end; }
+.loginDocsLink { border: 1px solid #efede2; color: #efede2; font-family: var(--mantine-font-family-monospace); }
+.loginNav .sourceLink { min-height: 38px; padding: 0 16px; border-color: #efede2; background: #efede2; color: #111; text-transform: uppercase; }
+.loginHeroLayout { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(420px, 0.78fr); gap: 58px; align-items: center; min-height: 650px; padding: 68px 72px 54px; }
+.loginHeroCopy { max-width: 780px; text-align: left; }
+.loginHeroCopy h2 { max-width: 800px; color: var(--app-text); font-size: clamp(58px, 7.1vw, 104px); line-height: 0.9; letter-spacing: 0; word-break: keep-all; overflow-wrap: normal; text-wrap: balance; }
+.loginHeroCopy p { max-width: 650px; font-size: 19px; line-height: 1.55; color: #c3c0b7; text-wrap: pretty; }
 .loginEyebrow { color: var(--app-text); font-family: var(--mantine-font-family-monospace); font-size: 12px; font-weight: 800; text-transform: uppercase; }
 .loginEyebrow::before { content: "[ "; }
 .loginEyebrow::after { content: " ]"; }
+.loginHeroActions { flex-wrap: wrap; margin-top: 4px; }
+.loginHeroActions .primary, .loginHeroActions .secondary { min-height: 46px; padding: 0 18px; border-radius: 0; text-decoration: none; }
+.loginHeroActions .primary { border-color: #efede2; background: #efede2; color: #111; }
+.loginHeroActions .secondary { border-color: #383733; background: #11110f; color: #efede2; }
 .loginHeroMetrics { display: flex; flex-wrap: wrap; gap: 8px; }
 .loginHeroMetrics span { min-height: 32px; padding: 6px 10px; border: 1px solid var(--app-border); border-radius: 0; background: var(--app-soft); color: var(--app-muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
 .loginHeroMetrics strong { color: var(--app-text); }
-.loginPanel { align-self: center; width: 100%; padding: 18px; border: 1px solid #2c2c2c; border-radius: 0; background: rgba(7, 7, 7, 0.94); box-shadow: 10px 10px 0 rgba(255, 255, 255, 0.02), 18px 18px 0 rgba(255, 255, 255, 0.015); backdrop-filter: blur(16px); }
+.loginProductShowcase { position: relative; min-height: 520px; }
+.productAscii {
+  position: absolute;
+  right: -28px;
+  top: -40px;
+  width: 360px;
+  color: rgba(251, 250, 245, 0.18);
+  font-family: var(--mantine-font-family-monospace);
+  font-size: 56px;
+  font-weight: 900;
+  line-height: 0.95;
+  white-space: pre;
+}
+.productCodeWindow, .productInboxCard {
+  position: relative;
+  border: 1px solid #34332f;
+  border-radius: 0;
+  background: rgba(9, 9, 8, 0.9);
+  box-shadow: 16px 16px 0 rgba(251, 250, 245, 0.035);
+  backdrop-filter: blur(18px);
+}
+.productCodeWindow { margin: 36px 0 0 10px; overflow: hidden; }
+.productWindowTopbar { display: flex; align-items: center; gap: 7px; min-height: 42px; padding: 0 14px; border-bottom: 1px solid #282722; background: #141411; }
+.productWindowTopbar span { width: 8px; height: 8px; border-radius: 999px; background: #efede2; }
+.productWindowTopbar span:nth-child(2) { background: #85827a; }
+.productWindowTopbar span:nth-child(3) { background: #4b4a45; }
+.productWindowTopbar code { margin-left: auto; color: #a9a79f; font-size: 12px; }
+.productTabs { display: flex; gap: 4px; padding: 10px 12px 0; }
+.productTabs span { min-height: 28px; padding: 6px 10px; border: 1px solid #282722; color: #a9a79f; font-family: var(--mantine-font-family-monospace); font-size: 12px; font-weight: 800; }
+.productTabs .active { border-color: #efede2; color: #efede2; }
+.productCodeWindow pre { border: 0; border-radius: 0; background: transparent; color: #efede2; font-size: 14px; line-height: 1.6; }
+.productInboxCard { width: min(370px, 88%); margin: -16px 18px 0 auto; padding: 16px; }
+.productInboxHead, .productInboxAnswer, .productInboxHead span { display: flex; align-items: center; gap: 8px; }
+.productInboxHead { justify-content: space-between; color: #efede2; font-weight: 900; }
+.productInboxHead strong { color: var(--app-accent); font-family: var(--mantine-font-family-monospace); font-size: 12px; }
+.productInboxPrompt { margin: 16px 0; padding: 14px; border: 1px solid #2e2d29; background: #11110f; }
+.productInboxPrompt small { color: #a9a79f; font-family: var(--mantine-font-family-monospace); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+.productInboxPrompt p { margin-top: 8px; color: #efede2; line-height: 1.45; }
+.productInboxAnswer { padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--app-accent) 55%, #2e2d29); color: #efede2; font-size: 13px; font-weight: 800; }
+.productInboxAnswer svg { color: var(--app-accent); }
+.loginAccessBand { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(360px, 0.55fr); gap: 40px; align-items: center; width: min(1160px, calc(100% - 48px)); margin: 28px auto 0; padding: 32px; border: 1px solid #111; background: #fffdf6; color: #111; }
+.loginAccessCopy { display: grid; gap: 12px; max-width: 660px; }
+.loginAccessCopy .loginEyebrow { color: #111; }
+.loginAccessCopy h2 { color: #111; font-size: clamp(30px, 4.5vw, 54px); line-height: 0.98; text-wrap: balance; }
+.loginAccessCopy p { max-width: 560px; color: #555149; font-size: 16px; line-height: 1.65; }
+.loginPanel { align-self: center; width: 100%; padding: 18px; border: 1px solid #20201d; border-radius: 0; background: #0b0b0a; box-shadow: 10px 10px 0 rgba(17, 17, 17, 0.08); color: var(--app-text); }
 .loginPanelHead { align-items: flex-start; padding-bottom: 4px; }
 .loginPanelHead h3 { color: var(--app-text); font-size: 18px; }
 .loginPanelHead p { margin-top: 3px; color: var(--app-muted); font-size: 13px; line-height: 1.45; }
@@ -352,22 +428,7 @@ pre code { padding: 0; border-radius: 0; background: transparent; color: inherit
 .loginPanel .primary { min-height: 44px; border-color: var(--app-strong-border); background: var(--app-text); color: var(--app-bg); }
 .loginNotice { padding: 10px 0 4px; }
 .adminLoginToggle { justify-content: flex-start; min-height: 34px; border: 0; background: transparent; color: var(--app-primary); font-weight: 800; }
-.loginConsolePreview { max-width: 660px; margin-top: 6px; overflow: hidden; border: 1px solid #2c2c2c; border-radius: 0; background: rgba(7, 7, 7, 0.94); box-shadow: 10px 10px 0 rgba(255, 255, 255, 0.02), 18px 18px 0 rgba(255, 255, 255, 0.015); backdrop-filter: blur(16px); }
-.consoleTopbar { display: flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 12px; border-bottom: 1px solid var(--app-border); background: var(--app-soft); }
-.consoleTopbar span { width: 8px; height: 8px; border-radius: 999px; background: var(--app-primary); }
-.consoleTopbar span:nth-child(2) { background: var(--app-accent); }
-.consoleTopbar span:nth-child(3) { background: var(--app-muted); }
-.consoleTopbar code { margin-left: auto; color: var(--app-muted); font-size: 12px; }
-.consoleBody { padding: 14px; }
-.consolePrompt, .consoleAnswer { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 10px; border: 1px solid var(--app-border); border-radius: 0; background: var(--app-soft); font-size: 13px; font-weight: 800; }
-.consolePrompt svg { color: var(--app-primary); }
-.consoleAnswer { background: color-mix(in srgb, var(--app-accent) 10%, var(--app-surface)); color: var(--app-text); }
-.consoleAnswer svg { color: var(--app-accent); }
-.consoleRow { display: grid; grid-template-columns: 80px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 34px; padding: 0 10px; border: 1px solid var(--app-border); border-radius: 0; background: var(--app-surface); font-family: var(--mantine-font-family-monospace); font-size: 12px; }
-.consoleRow span { color: var(--app-muted); }
-.consoleRow strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--app-text); }
-.consoleRow em { color: var(--app-primary); font-style: normal; font-weight: 800; }
-.loginFlowStage { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; width: min(1376px, calc(100% - 64px)); margin: 0 auto; padding: 42px 96px 80px; border-inline: 1px solid #242424; border-bottom: 1px solid #242424; }
+.loginFlowStage { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; padding: 30px 72px 62px; border-top: 1px solid #242424; }
 .handoffRail, .requestPreview, .introCardGrid, .integrationGrid { display: grid; gap: 12px; }
 .handoffRail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .requestPreview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -380,14 +441,19 @@ pre code { padding: 0; border-radius: 0; background: transparent; color: inherit
 .requestPreviewPanel dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; margin: 12px 0; }
 .requestPreviewPanel dt { color: var(--app-muted); }
 .requestPreviewPanel dd { margin: 0; font-weight: 700; }
-.loginPublicContent { width: min(1376px, calc(100% - 64px)); margin: 0 auto 32px; padding: 42px 96px 72px; border: 1px solid #242424; border-top: 0; }
+.loginPublicContent { width: min(1160px, calc(100% - 48px)); margin: 28px auto 32px; padding: 36px; border: 1px solid #111; background: #fffdf6; color: #111; }
 .introHeader { display: grid; gap: 8px; max-width: 760px; }
 .introCardTitle { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .plannedBadge { display: inline-flex; align-items: center; min-height: 24px; padding: 0 8px; border: 1px solid var(--mantine-color-yellow-6); border-radius: 999px; background: var(--app-warning-soft); color: var(--app-text); font-size: 12px; font-weight: 800; }
 .introCard.planned { border-color: color-mix(in srgb, var(--mantine-color-yellow-6) 55%, var(--app-border)); background: color-mix(in srgb, var(--app-warning-soft) 38%, var(--app-surface)); }
 .introCard.wide { grid-column: span 2; }
-.loginPublicContent :where(.introCard, .introPanel, .publicBoard) { border-color: #2c2c2c; background: #0a0a0a; }
-.loginPublicContent :where(.introHeader p, .introCard p, .introPanel p, .publicBoard em, .publicBoardEmpty) { color: #a4a4aa; }
+.loginPublicContent .loginEyebrow,
+.loginPublicContent .introHeader h2,
+.loginPublicContent .introPanel h2,
+.loginPublicContent .introCard h3,
+.loginPublicContent .publicBoard strong { color: #111; }
+.loginPublicContent :where(.introCard, .introPanel, .publicBoard) { border-color: #111; background: #fffaf0; color: #111; box-shadow: 6px 6px 0 rgba(17, 17, 17, 0.08); }
+.loginPublicContent :where(.introHeader p, .introCard p, .introPanel p, .publicBoard em, .publicBoardEmpty) { color: #5c574f; }
 .publicBoard ol { display: grid; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
 :where(.publicBoard li, .exampleList div) { justify-content: space-between; }
 
@@ -401,6 +467,7 @@ pre code { padding: 0; border-radius: 0; background: transparent; color: inherit
   .shell { grid-template-columns: 240px 1fr; }
   .loginHeroLayout { grid-template-columns: 1fr; align-items: start; }
   .loginHeroCopy { max-width: none; }
+  .loginAccessBand { grid-template-columns: 1fr; }
   .loginPanel { max-width: 640px; }
   .leaderboardRow { grid-template-columns: 1fr; }
   .leaderMetrics { justify-content: flex-start; }
@@ -427,11 +494,21 @@ pre code { padding: 0; border-radius: 0; background: transparent; color: inherit
   .requestList { display: flex; flex: 0 0 auto; max-height: 148px; overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 2px; scroll-snap-type: x proximity; }
   .requestList .requestItem, .requestList .empty { flex: 0 0 min(260px, 72vw); scroll-snap-align: start; }
   .workspace { display: block; }
-  :where(.loginNav, .loginHeroLayout, .loginPublicContent, .topbar, .page, .task) { width: min(100%, calc(100% - 32px)); padding-left: 0; padding-right: 0; }
+  :where(.loginPublicContent, .loginAccessBand, .topbar, .page, .task) { width: min(100%, calc(100% - 32px)); padding-left: 0; padding-right: 0; }
   .task { width: auto; margin: 0; border-radius: 0; }
-  .loginHeroLayout { gap: 18px; padding-top: 24px; }
+  .loginStage { width: min(100%, calc(100% - 24px)); }
+  .loginNav { grid-template-columns: 1fr; justify-items: stretch; padding: 14px 16px; }
+  .loginNavLinks, .loginNavActions { justify-content: flex-start; overflow-x: auto; }
+  .loginHeroLayout { gap: 22px; min-height: 0; padding: 34px 24px 28px; }
   .loginHeroCopy h2 { font-size: 40px; }
-  .loginFlowStage { width: min(100%, calc(100% - 32px)); }
+  .loginProductShowcase { min-height: auto; padding-bottom: 12px; }
+  .productAscii { right: -24px; top: -14px; font-size: 42px; opacity: 0.75; }
+  .productCodeWindow { margin: 10px 0 0; }
+  .productInboxCard { width: 100%; margin: 10px 0 0; }
+  .loginFlowStage { padding: 24px; }
+  .loginAccessBand, .loginPublicContent { padding: 24px; }
+  .loginAccessBand { gap: 20px; }
+  .loginAccessCopy h2 { font-size: 36px; }
   .introCard.wide { grid-column: auto; }
 }
 
@@ -474,20 +551,14 @@ pre code { padding: 0; border-radius: 0; background: transparent; color: inherit
   .loginShell { overflow: visible; }
   .loginShell::before { width: 100%; height: 560px; opacity: 0.32; mask-image: linear-gradient(180deg, black 0, black 58%, transparent 100%); }
   .loginShell::after { display: none; }
-  .loginShell > .loginNav,
-  .loginShell > .loginHeroLayout,
-  .loginShell > .loginFlowStage,
-  .loginShell > .loginPublicContent {
-    width: min(100%, calc(100% - 24px));
-  }
-  .loginShell > .loginNav {
-    margin-top: 12px;
-    padding: 14px 16px;
-  }
-  .loginNav { align-items: flex-start; }
+  .loginAnnouncement { align-items: flex-start; flex-direction: column; gap: 2px; padding: 8px 12px; line-height: 1.35; }
+  .loginStage,
+  .loginAccessBand,
+  .loginPublicContent { width: min(100%, calc(100% - 20px)); }
+  .loginNav { align-items: stretch; }
   .loginNav .sourceLink { white-space: nowrap; }
   .loginHeroLayout {
-    padding: 32px 24px 36px;
+    padding: 28px 18px 24px;
     min-height: 0;
   }
   .loginHeroCopy {
@@ -504,13 +575,18 @@ pre code { padding: 0; border-radius: 0; background: transparent; color: inherit
     font-size: 16px;
     line-height: 1.65;
   }
+  .loginHeroActions { display: grid; grid-template-columns: 1fr; }
+  .loginHeroActions .primary, .loginHeroActions .secondary { width: 100%; }
   .loginHeroMetrics { display: grid; grid-template-columns: 1fr; }
   .loginHeroMetrics span { width: 100%; }
+  .productAscii { display: none; }
+  .productCodeWindow pre { font-size: 12px; }
   .loginPanel { padding: 14px; }
-  .loginPanel, .loginConsolePreview { width: 100%; max-width: none; box-shadow: none; }
+  .loginPanel, .productCodeWindow, .productInboxCard { width: 100%; max-width: none; box-shadow: none; }
+  .loginAccessBand,
+  .loginPublicContent { padding: 18px; }
+  .loginAccessCopy h2 { font-size: 34px; }
   .loginFlowStage,
   .loginPublicContent { padding: 24px; }
-  .consoleRow { grid-template-columns: 64px minmax(0, 1fr); }
-  .consoleRow em { grid-column: 2; }
   .handoffRail, .requestPreview { grid-template-columns: 1fr; }
 }

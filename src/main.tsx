@@ -1645,116 +1645,161 @@ function Login({ onToken }: { onToken: (token: string) => void }) {
   }
 
   const oauthEnabled = authConfig.github_enabled || (authConfig.oauth_channels ?? []).some((channel) => channel.enabled);
+  const isZh = currentLanguage() === "zh";
+  const loginPanel = (
+    <section className="loginPanel">
+      <div className="loginPanelHead">
+        <span className="loginPanelIcon"><Shield size={18} /></span>
+        <div>
+          <h3>{t("loginPanelTitle")}</h3>
+          <p>{t("loginPanelSubtitle")}</p>
+        </div>
+      </div>
+      <div className="loginPrimaryAuth">
+        <span>{t("loginWithOAuth")}</span>
+        {oauthEnabled ? <OAuthLoginButtons config={authConfig} /> : <p className="loginNotice">{t("oauthUnavailable")}</p>}
+      </div>
+
+      {authConfig.passkey_enabled !== false && (
+        <div className="passkeyLogin">
+          <label>
+            {t("passkeyAccess")}
+            <input value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder={t("email")} />
+          </label>
+          <button className="secondary" type="button" onClick={signInWithPasskey} disabled={passkeyBusy}>
+            <KeyRound size={18} /> {t("passkeySignIn")}
+          </button>
+        </div>
+      )}
+
+      {error && <p className="error">{error}</p>}
+
+      <button className="adminLoginToggle" type="button" onClick={() => setShowAdminLogin((value) => !value)}>
+        <Shield size={15} /> {showAdminLogin ? t("hideAdminAccess") : t("adminAccess")}
+      </button>
+
+      {showAdminLogin && (
+        <form className="adminLoginForm" onSubmit={submit}>
+          <p>{t("adminAccessHelp")}</p>
+          <label>
+            {t("email")}
+            <input value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" />
+          </label>
+          <label>
+            {t("password")}
+            <input value={pass} onChange={(event) => setPass(event.target.value)} type="password" autoComplete="current-password" />
+          </label>
+          <button className="primary" type="submit">
+            <Check size={18} /> {t("adminSignIn")}
+          </button>
+        </form>
+      )}
+    </section>
+  );
 
   return (
     <main className="loginShell">
-      <header className="loginNav">
-        <BrandLockup />
-        <SourceLink />
-      </header>
-      <section className="loginHeroLayout">
-        <section className="loginHeroCopy">
-          <span className="loginEyebrow">humen-mcp / ask_humen</span>
-          <h2>{t("loginHeroTitle")}</h2>
-          <p>{t("loginHeroSubtitle")}</p>
-          <div className="loginHeroMetrics" aria-label="humen-mcp status">
-            <span><strong>/mcp</strong> endpoint</span>
-            <span><strong>passkey</strong> ready</span>
-            <span><strong>audit</strong> logged</span>
+      <a className="loginAnnouncement" href={`${sourceUrl}/releases`} target="_blank" rel="noreferrer">
+        <span>{isZh ? "humen-mcp 现在支持 Passkey、信誉和 Agent 好友关系" : "humen-mcp now supports passkeys, reputation, and agent friendships"}</span>
+        <strong>{isZh ? "查看更新 ->" : "Read the update ->"}</strong>
+      </a>
+
+      <section className="loginStage">
+        <header className="loginNav">
+          <BrandLockup />
+          <nav className="loginNavLinks" aria-label="landing navigation">
+            <a href="#flow">{isZh ? "流程" : "Build"}</a>
+            <a href="#login-access">{isZh ? "登录" : "Access"}</a>
+            <a href="#public-sections">{isZh ? "信任" : "Trust"}</a>
+          </nav>
+          <div className="loginNavActions">
+            <a className="loginDocsLink" href={`${sourceUrl}#readme`} target="_blank" rel="noreferrer">DOCS</a>
+            <SourceLink />
           </div>
-          <LoginConsolePreview />
+        </header>
+
+        <section className="loginHeroLayout">
+          <section className="loginHeroCopy">
+            <span className="loginEyebrow">MCP / human judgment layer</span>
+            <h2>{t("loginHeroTitle")}</h2>
+            <p>{t("loginHeroSubtitle")}</p>
+            <div className="loginHeroActions">
+              <a className="primary" href="#login-access"><Send size={18} /> {isZh ? "接入人类协作" : "Start routing work"}</a>
+              <a className="secondary" href="/mcp/"><Inbox size={18} /> {t("openWorkspace")}</a>
+            </div>
+            <div className="loginHeroMetrics" aria-label="humen-mcp status">
+              <span><strong>/mcp</strong> endpoint</span>
+              <span><strong>passkey</strong> ready</span>
+              <span><strong>audit</strong> logged</span>
+            </div>
+          </section>
+
+          <LoginProductShowcase />
         </section>
 
-        <section className="loginPanel">
-          <div className="loginPanelHead">
-            <span className="loginPanelIcon"><Shield size={18} /></span>
-            <div>
-              <h3>{t("loginPanelTitle")}</h3>
-              <p>{t("loginPanelSubtitle")}</p>
-            </div>
-          </div>
-          <div className="loginPrimaryAuth">
-            <span>{t("loginWithOAuth")}</span>
-            {oauthEnabled ? <OAuthLoginButtons config={authConfig} /> : <p className="loginNotice">{t("oauthUnavailable")}</p>}
-          </div>
-
-          {authConfig.passkey_enabled !== false && (
-            <div className="passkeyLogin">
-              <label>
-                {t("passkeyAccess")}
-                <input value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder={t("email")} />
-              </label>
-              <button className="secondary" type="button" onClick={signInWithPasskey} disabled={passkeyBusy}>
-                <KeyRound size={18} /> {t("passkeySignIn")}
-              </button>
-            </div>
-          )}
-
-          {error && <p className="error">{error}</p>}
-
-          <button className="adminLoginToggle" type="button" onClick={() => setShowAdminLogin((value) => !value)}>
-            <Shield size={15} /> {showAdminLogin ? t("hideAdminAccess") : t("adminAccess")}
-          </button>
-
-          {showAdminLogin && (
-            <form className="adminLoginForm" onSubmit={submit}>
-              <p>{t("adminAccessHelp")}</p>
-              <label>
-                {t("email")}
-                <input value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" />
-              </label>
-              <label>
-                {t("password")}
-                <input value={pass} onChange={(event) => setPass(event.target.value)} type="password" autoComplete="current-password" />
-              </label>
-              <button className="primary" type="submit">
-                <Check size={18} /> {t("adminSignIn")}
-              </button>
-            </form>
-          )}
-        </section>
+        <div id="flow">
+          <LoginFlowStage />
+        </div>
       </section>
-      <LoginFlowStage />
+
+      <section className="loginAccessBand" id="login-access">
+        <div className="loginAccessCopy">
+          <span className="loginEyebrow">{isZh ? "Workspace access" : "Workspace access"}</span>
+          <h2>{isZh ? "进入收件箱，处理 Agent 正在等待的人类判断。" : "Enter the inbox for the human decisions your agents are waiting on."}</h2>
+          <p>{isZh ? "普通用户优先使用管理员配置的 OAuth 或 Passkey。管理员账号密码入口保留给初始化和维护。" : "Regular users should use OAuth or a bound passkey. Password access stays available for administrator setup and maintenance."}</p>
+        </div>
+        {loginPanel}
+      </section>
+
       <LoginPublicSections leaderboard={publicLeaderboard} />
     </main>
   );
 }
 
-function LoginConsolePreview() {
-  const rows = [
-    { label: "agent", value: "codex.run", state: "online" },
-    { label: "route", value: "/mcp ask_humen", state: "90s" },
-    { label: "scope", value: "friends + agents", state: "policy" },
-    { label: "reply", value: "human.reviewed", state: "audit" }
-  ];
+function LoginProductShowcase() {
+  const isZh = currentLanguage() === "zh";
+  const code = `const answer = await ask_humen({
+  kind: "judgment",
+  title: "Deploy review",
+  prompt: "Can I ship this change?",
+  timeout_seconds: 90
+});
+
+if (answer.ok) continue_agent();`;
 
   return (
-    <section className="loginConsolePreview" aria-label="request console preview">
-      <div className="consoleTopbar">
-        <span />
-        <span />
-        <span />
-        <code>{apiPath("/mcp")}</code>
+    <section className="loginProductShowcase" aria-label="humen-mcp product preview">
+      <div className="productAscii" aria-hidden="true">
+        {"{ human }\n  -> /mcp\n      -> agent"}
       </div>
-      <div className="consoleBody">
-        <div className="consolePrompt">
-          <Send size={16} />
-          <span>{t("loginConsolePrompt")}</span>
+      <article className="productCodeWindow">
+        <div className="productWindowTopbar">
+          <span />
+          <span />
+          <span />
+          <code>{apiPath("/mcp")}</code>
         </div>
-        <div className="consoleRows">
-          {rows.map((row) => (
-            <div className="consoleRow" key={row.label}>
-              <span>{row.label}</span>
-              <strong>{row.value}</strong>
-              <em>{row.state}</em>
-            </div>
-          ))}
+        <div className="productTabs">
+          <span className="active">MCP</span>
+          <span>Agent</span>
+          <span>Async</span>
         </div>
-        <div className="consoleAnswer">
+        <pre><code>{code}</code></pre>
+      </article>
+      <article className="productInboxCard">
+        <div className="productInboxHead">
+          <span><Inbox size={16} /> Live Inbox</span>
+          <strong>req_42c9</strong>
+        </div>
+        <div className="productInboxPrompt">
+          <small>{isZh ? "待处理判断" : "Waiting for review"}</small>
+          <p>{isZh ? "可以部署这次登录与 OAuth 配置变更吗？" : "Can this login and OAuth configuration change be deployed?"}</p>
+        </div>
+        <div className="productInboxAnswer">
           <Check size={16} />
-          <span>{t("loginConsoleAnswer")}</span>
+          <span>{isZh ? "已批准，备注写入审计记录" : "Approved. Note written to the audit log."}</span>
         </div>
-      </div>
+      </article>
     </section>
   );
 }
