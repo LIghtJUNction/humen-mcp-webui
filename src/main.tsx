@@ -629,7 +629,10 @@ const zhText: Record<string, string> = {
   agentFriendAccepted: "已成为 Agent 好友。",
   agentFriendRequested: "已发送 Agent 好友申请。",
   agentAskMePlaceholder: "给这个 agent 绑定用户留言",
-  agentAskMeSent: "留言已发送。",
+  agentAskMeSent: "已提交，等待 Agent 已读；未读前可继续修改。",
+  agentMemoSaved: "修改已保存，仍在等待 Agent 已读。",
+  agentMemoLocked: "Agent 已读后不能再修改。",
+  saveMemoEdit: "保存修改",
   incomingAgentRequest: "Agent 发来的申请",
   agentPending: "等待 Agent 处理",
   memoBoard: "留言板",
@@ -921,7 +924,10 @@ const enText: Record<string, string> = {
   agentFriendAccepted: "Agent friend accepted.",
   agentFriendRequested: "Agent friend request sent.",
   agentAskMePlaceholder: "Leave a memo for this agent's bound user",
-  agentAskMeSent: "Memo sent.",
+  agentAskMeSent: "Submitted and waiting for the agent read receipt; you can still edit it until read.",
+  agentMemoSaved: "Changes saved; still waiting for the agent read receipt.",
+  agentMemoLocked: "The agent has read this memo, so it can no longer be edited.",
+  saveMemoEdit: "Save changes",
   incomingAgentRequest: "Incoming agent request",
   agentPending: "Waiting for agent",
   memoBoard: "Memo board",
@@ -2800,11 +2806,14 @@ function TaskPanel({ request, token, now, afterSubmit }: { request: HumanRequest
   const [answer, setAnswer] = useState(defaultRequestAnswer(request));
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
   const imageSrc = imageSource(request);
+  const imageMeta = imagePreviewMeta(request);
 
   useEffect(() => {
     setAnswer(defaultRequestAnswer(request));
     setNote("");
+    setImageFailed(false);
   }, [request.id]);
 
   async function submit() {
@@ -2832,10 +2841,17 @@ function TaskPanel({ request, token, now, afterSubmit }: { request: HumanRequest
         </div>
       </header>
 
-      {imageSrc && (
+      {imageSrc && !imageFailed && (
         <figure className="imagePreview">
-          <img src={imageSrc} alt="" />
+          <img src={imageSrc} alt="" onError={() => setImageFailed(true)} />
+          {imageMeta && <figcaption>{imageMeta}</figcaption>}
         </figure>
+      )}
+      {imageSrc && imageFailed && (
+        <div className="imagePreview imagePreviewError">
+          <strong>{currentLanguage() === "zh" ? "图片无法显示" : "Image could not be displayed"}</strong>
+          <small>{imageMeta || request.image_mime_type || "image"}</small>
+        </div>
       )}
 
       {request.steps.length > 0 && (
@@ -3428,6 +3444,7 @@ function AgentsView({
 
 function AgentCard({ agent, token, onChanged }: { agent: ConnectedAgent; token: string; onChanged: () => void }) {
   const [draft, setDraft] = useState("");
+  const [messageDrafts, setMessageDrafts] = useState<Record<string, string>>({});
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [ratingOpen, setRatingOpen] = useState(false);
@@ -3439,6 +3456,23 @@ function AgentCard({ agent, token, onChanged }: { agent: ConnectedAgent; token: 
   const ownerHome = /^[a-z0-9][a-z0-9-]{1,31}$/.test(ownerName) ? `/${encodeURIComponent(ownerName)}` : null;
   const draftState = memoDraftState(draft);
   const draftInvalid = draftState.tooLong || draftState.tooManyLines;
+
+  useEffect(() => {
+    const editableIds = new Set(
+      agent.pending_messages
+        .filter((message) => canEditAgentMessage(message))
+        .map((message) => message.id)
+    );
+    setMessageDrafts((current) => {
+      const next: Record<string, string> = {};
+      for (const message of agent.pending_messages) {
+        if (editableIds.has(message.id)) {
+          next[message.id] = current[message.id] ?? message.body;
+        }
+      }
+      return next;
+    });
+  }, [agent.pending_messages]);
 
   async function post(path: string, body?: unknown) {
     setBusy(true);
@@ -3487,6 +3521,28 @@ function AgentCard({ agent, token, onChanged }: { agent: ConnectedAgent; token: 
     }
   }
 
+  async function saveAgentMessage(message: AgentHumanMessage) {
+    const body = (messageDrafts[message.id] ?? message.body).trim();
+    if (!body) return;
+    setBusy(true);
+    setStatus("");
+    try {
+      const response = await fetch(apiPath(`/api/agents/${encodeURIComponent(agent.id)}/messages/${encodeURIComponent(message.id)}`), {
+        method: "PATCH",
+        headers: { ...authHeaders(token), "content-type": "application/json" },
+        body: JSON.stringify({ body })
+      });
+      if (!response.ok) {
+        setStatus((await safeError(response)) || t("agentMemoLocked"));
+      } else {
+        setStatus(t("agentMemoSaved"));
+      }
+      await onChanged();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submitRating() {
     const response = await post(`/api/agents/${encodeURIComponent(agent.id)}/rate`, { score });
     if (response) {
@@ -3532,7 +3588,17 @@ function AgentCard({ agent, token, onChanged }: { agent: ConnectedAgent; token: 
             <div className="memoList">
             {agent.pending_messages.map((message) => (
               <article className={`memoItem ${message.read_at ? "" : "unread"}`} key={message.id}>
-                <p>{message.body}</p>
+                {canEditAgentMessage(message) ? (
+                  <AgentMessageEditor
+                    message={message}
+                    value={messageDrafts[message.id] ?? message.body}
+                    busy={busy}
+                    onChange={(value) => setMessageDrafts((current) => ({ ...current, [message.id]: value }))}
+                    onSave={() => saveAgentMessage(message)}
+                  />
+                ) : (
+                  <p>{message.body}</p>
+                )}
                 <small>
                   {message.kind === "friend_request" ? t("incomingAgentRequest") : message.kind}
                   {" · "}
@@ -3589,6 +3655,42 @@ function AgentCard({ agent, token, onChanged }: { agent: ConnectedAgent; token: 
       </div>
     </article>
   );
+}
+
+function AgentMessageEditor({
+  message,
+  value,
+  busy,
+  onChange,
+  onSave
+}: {
+  message: AgentHumanMessage;
+  value: string;
+  busy: boolean;
+  onChange: (value: string) => void;
+  onSave: () => void;
+}) {
+  const state = memoDraftState(value);
+  const unchanged = value.trim() === message.body.trim();
+  return (
+    <div className="memoEdit">
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        maxLength={memoBodyMaxChars + 200}
+      />
+      <div className={state.tooLong || state.tooManyLines ? "fieldMeta error" : "fieldMeta"}>
+        <span>{memoLimitText(state)}</span>
+        <button className="secondary small" onClick={onSave} disabled={busy || !state.valid || unchanged}>
+          <Check size={15} /> {t("saveMemoEdit")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function canEditAgentMessage(message: AgentHumanMessage) {
+  return message.direction === "human_to_agent" && message.status === "pending" && !message.read_at;
 }
 
 function AgentView({
@@ -6179,6 +6281,17 @@ function imageSource(request: HumanRequest) {
   if (!image) return null;
   if (image.startsWith("data:image/")) return image;
   return `data:${request.image_mime_type || "image/png"};base64,${image}`;
+}
+
+function imagePreviewMeta(request: HumanRequest) {
+  if (request.image_url) return request.image_url;
+  const image = request.image_base64?.trim();
+  if (!image) return "";
+  const parts = image.startsWith("data:image/") ? image.split(",") : [];
+  const payload = parts.length > 0 ? parts[parts.length - 1] : image;
+  const bytes = Math.max(0, Math.floor((payload.length * 3) / 4));
+  const size = bytes > 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${bytes} B`;
+  return `${request.image_mime_type || "image/png"} · ${size}`;
 }
 
 function formatDuration(seconds: number) {

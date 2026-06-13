@@ -204,9 +204,15 @@ textarea.note, .compactNote { min-height: 84px; }
 .warningText { color: var(--mantine-color-yellow-7); }
 .fieldMeta { display: flex; justify-content: space-between; gap: 10px; color: var(--app-muted); font-size: 12px; font-weight: 700; }
 .fieldMeta.error { color: var(--mantine-color-red-6); }
+.memoEdit { display: grid; gap: 8px; }
+.memoEdit textarea { min-height: 88px; margin: 0; }
+.memoEdit .fieldMeta { align-items: center; }
 
 .imagePreview { max-width: 760px; margin: 0; overflow: hidden; border: 1px solid var(--app-border); border-radius: 6px; background: var(--app-soft); }
 .imagePreview img { display: block; width: 100%; max-height: 420px; object-fit: contain; }
+.imagePreview figcaption { padding: 8px 10px; border-top: 1px solid var(--app-border); color: var(--app-muted); font-size: 12px; font-weight: 700; }
+.imagePreviewError { display: grid; gap: 4px; padding: 14px; border-style: dashed; color: var(--mantine-color-red-6); }
+.imagePreviewError small { color: var(--app-muted); font-weight: 700; }
 :where(.steps, .compactSteps, .guideBody ol, .guideBody ul) { margin: 0; padding-left: 24px; line-height: 1.55; }
 .choices { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); max-width: 760px; }
 .judgmentChoices { grid-template-columns: repeat(2, minmax(140px, 220px)); }
